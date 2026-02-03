@@ -51,6 +51,11 @@
     .spinner { width: 12px; height: 12px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; }
     .card-image { width: 100%; border-radius: 6px; margin-bottom: 12px; max-height: 250px; object-fit: cover; cursor: pointer; }
     .photo-upload-area { border: 2px dashed rgba(139,115,85,0.3); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 12px; transition: all 0.2s; }
+    .voice-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border: 2px solid rgba(139,115,85,0.2); border-radius: 8px; background: #FDF8F3; cursor: pointer; font-size: 15px; font-family: 'Source Sans 3', sans-serif; color: #8B7355; font-weight: 500; margin-bottom: 12px; transition: all 0.2s; }
+    .voice-btn:hover { background: rgba(139,115,85,0.08); border-color: #8B7355; }
+    .voice-btn.recording { background: rgba(205,92,92,0.08); border-color: #CD5C5C; color: #CD5C5C; animation: pulse 1.5s ease infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .voice-dot { width: 10px; height: 10px; border-radius: 50%; background: #CD5C5C; }
     .photo-upload-area:hover { border-color: #8B7355; background: rgba(139,115,85,0.04); }
     .photo-upload-area.has-image { border-style: solid; border-color: rgba(139,115,85,0.2); padding: 8px; }
     .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; }
@@ -188,6 +193,9 @@
       const [imageFile, setImageFile] = useState(null);
       const [uploading, setUploading] = useState(false);
       const [lightboxUrl, setLightboxUrl] = useState(null);
+      const [isRecording, setIsRecording] = useState(false);
+      const [voiceSupported, setVoiceSupported] = useState(false);
+      const recognitionRef = useRef(null);
       const [showAddCategory, setShowAddCategory] = useState(false);
       const [showManageCategories, setShowManageCategories] = useState(false);
       const [newCatName, setNewCatName] = useState('');
@@ -196,6 +204,53 @@
       const fileInputRef = useRef(null);
 
       const allCategories = [...defaultCategories, ...customCategories];
+
+      useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          setVoiceSupported(true);
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+          let finalTranscript = '';
+          recognition.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const t = event.results[i][0].transcript;
+              if (event.results[i].isFinal) { finalTranscript += t + ' '; } else { interim = t; }
+            }
+            setNewItem(prev => ({ ...prev, content: (finalTranscript + interim).trim() }));
+          };
+          recognition.onerror = (e) => { console.error('Speech error:', e.error); setIsRecording(false); };
+          recognition.onend = () => { setIsRecording(false); };
+          recognitionRef.current = recognition;
+        }
+      }, []);
+
+      const toggleVoice = () => {
+        if (!recognitionRef.current) return;
+        if (isRecording) {
+          recognitionRef.current.stop();
+          setIsRecording(false);
+        } else {
+          // Reset the final transcript to current content so we append
+          recognitionRef.current.finalTranscript = '';
+          // We need to handle appending to existing content
+          const currentContent = newItem.content;
+          let finalTranscript = currentContent ? currentContent + ' ' : '';
+          recognitionRef.current.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const t = event.results[i][0].transcript;
+              if (event.results[i].isFinal) { finalTranscript += t + ' '; } else { interim = t; }
+            }
+            setNewItem(prev => ({ ...prev, content: (finalTranscript + interim).trim() }));
+          };
+          recognitionRef.current.start();
+          setIsRecording(true);
+        }
+      };
 
       useEffect(() => {
         const config = JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null');
@@ -231,6 +286,7 @@
 
       const handleAdd = async () => {
         if (!newItem.title.trim()) return;
+        if (isRecording && recognitionRef.current) { recognitionRef.current.stop(); setIsRecording(false); }
         let imageUrl = null;
         if (imageFile && isConfigured) {
           setUploading(true);
@@ -262,6 +318,7 @@
       };
 
       const handleSaveEdit = async () => {
+        if (isRecording && recognitionRef.current) { recognitionRef.current.stop(); setIsRecording(false); }
         let imageUrl = items.find(i => i.id === editingId)?.image_url || null;
         if (imageFile && isConfigured) { setUploading(true); try { imageUrl = await supabaseAPI.uploadImage(imageFile); } catch(e) {} setUploading(false); }
         else if (!imagePreview) imageUrl = null;
@@ -511,6 +568,11 @@
                 </select>
                 <input type="text" placeholder="Title" value={newItem.title} onChange={e => setNewItem({ ...newItem, title: e.target.value })} style={st.input} />
                 <textarea placeholder="Your thoughts, notes, or recommendations..." value={newItem.content} onChange={e => setNewItem({ ...newItem, content: e.target.value })} style={st.textarea} />
+                {voiceSupported && (
+                  <button type="button" className={`voice-btn ${isRecording ? 'recording' : ''}`} onClick={toggleVoice}>
+                    {isRecording ? <><div className="voice-dot" /> Recording... tap to stop</> : <>🎙️ Voice Entry</>}
+                  </button>
+                )}
                 <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleImageSelect} style={{ display: 'none' }} />
                 {imagePreview ? (
                   <div className="photo-upload-area has-image">
@@ -528,7 +590,7 @@
                   </div>
                 )}
                 <div style={st.formActions}>
-                  <button className="btn-secondary" onClick={() => { setIsAdding(false); setEditingId(null); setNewItem({ category: 'notes', title: '', content: '' }); removeImage(); }} style={st.cancelButton}>Cancel</button>
+                  <button className="btn-secondary" onClick={() => { setIsAdding(false); setEditingId(null); setNewItem({ category: 'notes', title: '', content: '' }); removeImage(); if (isRecording && recognitionRef.current) { recognitionRef.current.stop(); setIsRecording(false); } }} style={st.cancelButton}>Cancel</button>
                   <button className="btn-primary" onClick={editingId ? handleSaveEdit : handleAdd} style={st.saveButton} disabled={uploading}>{editingId ? 'Save Changes' : 'Add Entry'}</button>
                 </div>
               </div>
