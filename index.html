@@ -33,6 +33,10 @@
       .delete-btn:hover { background: rgba(205,92,92,0.15) !important; }
       .settings-btn:hover { background: rgba(139,115,85,0.1); }
       .photo-btn:hover { background: rgba(139,115,85,0.15) !important; }
+      .add-cat-btn:hover { background: rgba(139,115,85,0.15) !important; }
+      .icon-option:hover { background: rgba(139,115,85,0.15) !important; }
+      .color-option:hover { transform: scale(1.2); }
+      .remove-cat:hover { background: rgba(205,92,92,0.15) !important; }
     }
     .category-tab.active { background: #8B7355 !important; color: #FDF8F3 !important; }
     input:focus, textarea:focus, select:focus { outline: none; border-color: #8B7355 !important; }
@@ -51,9 +55,18 @@
     .photo-upload-area.has-image { border-style: solid; border-color: rgba(139,115,85,0.2); padding: 8px; }
     .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; }
     .photo-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: center; }
-    .uploading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,251,247,0.8); display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-direction: column; gap: 8px; }
+    .uploading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,251,247,0.8); display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-direction: column; gap: 8px; z-index: 10; }
     .lightbox { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .lightbox img { max-width: 95vw; max-height: 95vh; object-fit: contain; }
+    .icon-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .icon-option { width: 40px; height: 40px; border: 2px solid transparent; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; background: rgba(139,115,85,0.06); transition: all 0.15s; }
+    .icon-option.selected { border-color: #8B7355; background: rgba(139,115,85,0.15); }
+    .color-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .color-option { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; }
+    .color-option.selected { border-color: #2D2416; transform: scale(1.15); }
+    .cat-manage-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background: rgba(139,115,85,0.04); margin-bottom: 6px; }
+    .cat-manage-label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .remove-cat { background: none; border: none; color: #B85450; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -67,7 +80,7 @@
       async fetchEntries() {
         const c = this.getConfig(); if (!c) return null;
         const res = await fetch(`${c.url}/rest/v1/entries?select=*&order=created_at.desc`, { headers: this.headers(c.key) });
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`); return await res.json();
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
       },
       async upsertEntry(entry) {
         const c = this.getConfig(); if (!c) return null;
@@ -75,24 +88,40 @@
           method: 'POST', headers: { ...this.headers(c.key), 'Prefer': 'resolution=merge-duplicates,return=representation' },
           body: JSON.stringify({ id: entry.id, category: entry.category, title: entry.title, content: entry.content, date: entry.date, starred: entry.starred, image_url: entry.image_url || null, updated_at: new Date().toISOString() })
         });
-        if (!res.ok) throw new Error(`Upsert failed: ${res.status}`); return await res.json();
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
       },
       async deleteEntry(id) {
         const c = this.getConfig(); if (!c) return null;
         const res = await fetch(`${c.url}/rest/v1/entries?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key) });
-        if (!res.ok) throw new Error(`Delete failed: ${res.status}`); return true;
+        if (!res.ok) throw new Error(`${res.status}`); return true;
       },
       async uploadImage(file) {
         const c = this.getConfig(); if (!c) throw new Error('Not configured');
         const ext = file.name.split('.').pop() || 'jpg';
         const filename = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
         const res = await fetch(`${c.url}/storage/v1/object/images/${filename}`, {
-          method: 'POST',
-          headers: { 'apikey': c.key, 'Authorization': `Bearer ${c.key}`, 'Content-Type': file.type, 'x-upsert': 'true' },
-          body: file
+          method: 'POST', headers: { 'apikey': c.key, 'Authorization': `Bearer ${c.key}`, 'Content-Type': file.type, 'x-upsert': 'true' }, body: file
         });
-        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+        if (!res.ok) throw new Error(`${res.status}`);
         return `${c.url}/storage/v1/object/public/images/${filename}`;
+      },
+      async fetchCategories() {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories?select=*&order=created_at.asc`, { headers: this.headers(c.key) });
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
+      },
+      async upsertCategory(cat) {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories`, {
+          method: 'POST', headers: { ...this.headers(c.key), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({ id: cat.id, label: cat.label, icon: cat.icon, color: cat.color })
+        });
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
+      },
+      async deleteCategory(id) {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key) });
+        if (!res.ok) throw new Error(`${res.status}`); return true;
       },
       async testConnection() {
         const c = this.getConfig(); if (!c) return false;
@@ -112,9 +141,7 @@
             if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
             canvas.width = w; canvas.height = h;
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            canvas.toBlob((blob) => {
-              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-            }, 'image/jpeg', quality);
+            canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: 'image/jpeg' })), 'image/jpeg', quality);
           };
           img.src = e.target.result;
         };
@@ -122,7 +149,7 @@
       });
     };
 
-    const categories = [
+    const defaultCategories = [
       { id: 'notes', label: 'Notes', icon: '✎', color: '#8B7355' },
       { id: 'books', label: 'Books', icon: '◎', color: '#6B8E6B' },
       { id: 'movies', label: 'Movies', icon: '▶', color: '#B8860B' },
@@ -130,16 +157,19 @@
       { id: 'misc', label: 'Misc', icon: '✦', color: '#708090' },
     ];
 
-    const defaultItems = [
-      { id: 'welcome-1', category: 'notes', title: 'Welcome to Commonplace', content: 'Your personal space for thoughts and discoveries. Now with photo support! 📸', date: new Date().toISOString().split('T')[0], starred: true, image_url: null },
-    ];
+    const iconOptions = ['📝', '💼', '🏠', '🎵', '🎨', '🏃', '🍕', '✈️', '💡', '🎯', '📚', '🎬', '🍽️', '🛒', '💰', '❤️', '🔧', '🌿', '📱', '🎮', '🐾', '⭐', '🔬', '🎓', '✎', '◎', '▶', '◈', '✦', '◆', '●', '■'];
+    const colorOptions = ['#8B7355', '#6B8E6B', '#B8860B', '#CD5C5C', '#708090', '#9370DB', '#20B2AA', '#FF8C00', '#DC143C', '#4682B4', '#2E8B57', '#D2691E', '#6A5ACD', '#DB7093', '#008B8B'];
 
     const STORAGE_KEY = 'commonplace_items';
-    const loadLocal = () => { try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : defaultItems; } catch(e) { return defaultItems; } };
+    const CAT_STORAGE_KEY = 'commonplace_custom_categories';
+    const loadLocal = () => { try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : []; } catch(e) { return []; } };
     const saveLocal = (items) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch(e) {} };
+    const loadLocalCats = () => { try { const s = localStorage.getItem(CAT_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch(e) { return []; } };
+    const saveLocalCats = (cats) => { try { localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(cats)); } catch(e) {} };
 
     function NotesApp() {
-      const [items, setItems] = useState(loadLocal);
+      const [items, setItems] = useState(() => { const l = loadLocal(); return l.length > 0 ? l : [{ id: 'welcome-1', category: 'notes', title: 'Welcome to Commonplace', content: 'Your personal space for thoughts and discoveries. Now with photos and custom categories! 📸', date: new Date().toISOString().split('T')[0], starred: true, image_url: null }]; });
+      const [customCategories, setCustomCategories] = useState(loadLocalCats);
       const [activeCategory, setActiveCategory] = useState('all');
       const [isAdding, setIsAdding] = useState(false);
       const [editingId, setEditingId] = useState(null);
@@ -158,7 +188,14 @@
       const [imageFile, setImageFile] = useState(null);
       const [uploading, setUploading] = useState(false);
       const [lightboxUrl, setLightboxUrl] = useState(null);
+      const [showAddCategory, setShowAddCategory] = useState(false);
+      const [showManageCategories, setShowManageCategories] = useState(false);
+      const [newCatName, setNewCatName] = useState('');
+      const [newCatIcon, setNewCatIcon] = useState('📝');
+      const [newCatColor, setNewCatColor] = useState('#8B7355');
       const fileInputRef = useRef(null);
+
+      const allCategories = [...defaultCategories, ...customCategories];
 
       useEffect(() => {
         const config = JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null');
@@ -169,25 +206,27 @@
       const fetchFromCloud = async () => {
         setSyncStatus('syncing');
         try {
-          const data = await supabaseAPI.fetchEntries();
-          if (data && data.length > 0) {
-            const formatted = data.map(item => ({ id: item.id, category: item.category, title: item.title, content: item.content, date: item.date, starred: item.starred, image_url: item.image_url || null }));
+          const [entries, cats] = await Promise.all([supabaseAPI.fetchEntries(), supabaseAPI.fetchCategories()]);
+          if (entries && entries.length > 0) {
+            const formatted = entries.map(item => ({ id: item.id, category: item.category, title: item.title, content: item.content, date: item.date, starred: item.starred, image_url: item.image_url || null }));
             setItems(formatted); saveLocal(formatted);
+          }
+          if (cats && cats.length > 0) {
+            const formatted = cats.map(c => ({ id: c.id, label: c.label, icon: c.icon, color: c.color }));
+            setCustomCategories(formatted); saveLocalCats(formatted);
           }
           setSyncStatus('synced');
         } catch (e) { console.error('Fetch error:', e); setSyncStatus('error'); }
       };
 
       const handleImageSelect = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const file = e.target.files?.[0]; if (!file) return;
         const compressed = await compressImage(file);
         setImageFile(compressed);
         const reader = new FileReader();
         reader.onload = (ev) => setImagePreview(ev.target.result);
         reader.readAsDataURL(compressed);
       };
-
       const removeImage = () => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
 
       const handleAdd = async () => {
@@ -199,71 +238,67 @@
           setUploading(false);
         }
         const item = { id: `item-${Date.now()}`, ...newItem, date: new Date().toISOString().split('T')[0], starred: false, image_url: imageUrl };
-        const newItems = [item, ...items];
-        setItems(newItems); saveLocal(newItems);
+        const newItems = [item, ...items]; setItems(newItems); saveLocal(newItems);
         setNewItem({ category: 'notes', title: '', content: '' }); setIsAdding(false); removeImage();
-        if (isConfigured) {
-          setSyncStatus('syncing');
-          try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); }
-        }
+        if (isConfigured) { setSyncStatus('syncing'); try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
       };
 
       const handleDelete = async (id) => {
         if (!window.confirm('Delete this entry?')) return;
-        const newItems = items.filter(i => i.id !== id);
-        setItems(newItems); saveLocal(newItems);
-        if (isConfigured) {
-          setSyncStatus('syncing');
-          try { await supabaseAPI.deleteEntry(id); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); }
-        }
+        const newItems = items.filter(i => i.id !== id); setItems(newItems); saveLocal(newItems);
+        if (isConfigured) { setSyncStatus('syncing'); try { await supabaseAPI.deleteEntry(id); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
       };
 
       const toggleStar = async (id) => {
-        const updated = items.map(i => i.id === id ? { ...i, starred: !i.starred } : i);
-        setItems(updated); saveLocal(updated);
+        const updated = items.map(i => i.id === id ? { ...i, starred: !i.starred } : i); setItems(updated); saveLocal(updated);
         const item = updated.find(i => i.id === id);
-        if (isConfigured && item) {
-          setSyncStatus('syncing');
-          try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); }
-        }
+        if (isConfigured && item) { setSyncStatus('syncing'); try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
       };
 
       const handleEdit = (item) => {
-        setEditingId(item.id);
-        setNewItem({ category: item.category, title: item.title, content: item.content });
-        if (item.image_url) { setImagePreview(item.image_url); } else { removeImage(); }
+        setEditingId(item.id); setNewItem({ category: item.category, title: item.title, content: item.content });
+        if (item.image_url) setImagePreview(item.image_url); else removeImage();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       };
 
       const handleSaveEdit = async () => {
         let imageUrl = items.find(i => i.id === editingId)?.image_url || null;
-        if (imageFile && isConfigured) {
-          setUploading(true);
-          try { imageUrl = await supabaseAPI.uploadImage(imageFile); } catch(e) { console.error('Upload error:', e); }
-          setUploading(false);
-        } else if (!imagePreview) { imageUrl = null; }
-        const updated = items.map(i => i.id === editingId ? { ...i, ...newItem, image_url: imageUrl } : i);
-        setItems(updated); saveLocal(updated);
+        if (imageFile && isConfigured) { setUploading(true); try { imageUrl = await supabaseAPI.uploadImage(imageFile); } catch(e) {} setUploading(false); }
+        else if (!imagePreview) imageUrl = null;
+        const updated = items.map(i => i.id === editingId ? { ...i, ...newItem, image_url: imageUrl } : i); setItems(updated); saveLocal(updated);
         const item = updated.find(i => i.id === editingId);
         setEditingId(null); setNewItem({ category: 'notes', title: '', content: '' }); removeImage();
-        if (isConfigured && item) {
-          setSyncStatus('syncing');
-          try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); }
+        if (isConfigured && item) { setSyncStatus('syncing'); try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
+      };
+
+      const handleAddCategory = async () => {
+        if (!newCatName.trim()) return;
+        const id = newCatName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        if (allCategories.find(c => c.id === id)) { alert('A category with this name already exists.'); return; }
+        const newCat = { id, label: newCatName.trim(), icon: newCatIcon, color: newCatColor };
+        const updated = [...customCategories, newCat]; setCustomCategories(updated); saveLocalCats(updated);
+        setNewCatName(''); setNewCatIcon('📝'); setNewCatColor('#8B7355'); setShowAddCategory(false);
+        if (isConfigured) { try { await supabaseAPI.upsertCategory(newCat); } catch(e) { console.error('Category sync error:', e); } }
+      };
+
+      const handleDeleteCategory = async (catId) => {
+        const entriesInCat = items.filter(i => i.category === catId);
+        if (entriesInCat.length > 0) { if (!window.confirm(`This category has ${entriesInCat.length} entries. They will be moved to "Notes". Continue?`)) return;
+          const movedItems = items.map(i => i.category === catId ? { ...i, category: 'notes' } : i); setItems(movedItems); saveLocal(movedItems);
+          if (isConfigured) { for (const item of movedItems.filter(i => entriesInCat.some(e => e.id === i.id))) { try { await supabaseAPI.upsertEntry(item); } catch(e) {} } }
         }
+        const updated = customCategories.filter(c => c.id !== catId); setCustomCategories(updated); saveLocalCats(updated);
+        if (activeCategory === catId) setActiveCategory('all');
+        if (isConfigured) { try { await supabaseAPI.deleteCategory(catId); } catch(e) {} }
       };
 
       const saveSupabaseConfig = async () => {
-        if (!supabaseUrl || !supabaseKey) return;
-        setConnectError('');
+        if (!supabaseUrl || !supabaseKey) return; setConnectError('');
         localStorage.setItem('commonplace_supabase_config', JSON.stringify({ url: supabaseUrl.replace(/\/$/, ''), key: supabaseKey.trim() }));
         const ok = await supabaseAPI.testConnection();
         if (ok) { setIsConfigured(true); setShowSettings(false); } else { localStorage.removeItem('commonplace_supabase_config'); setConnectError('Connection failed. Check your URL and key.'); }
       };
-
-      const disconnectSupabase = () => {
-        localStorage.removeItem('commonplace_supabase_config');
-        setSupabaseUrl(''); setSupabaseKey(''); setIsConfigured(false); setSyncStatus('offline'); setShowSettings(false); setConnectError('');
-      };
+      const disconnectSupabase = () => { localStorage.removeItem('commonplace_supabase_config'); setSupabaseUrl(''); setSupabaseKey(''); setIsConfigured(false); setSyncStatus('offline'); setShowSettings(false); setConnectError(''); };
 
       useEffect(() => { const h = () => setIsMobile(window.innerWidth < 600); window.addEventListener('resize', h); return () => window.removeEventListener('resize', h); }, []);
 
@@ -273,13 +308,9 @@
         return mc && ms;
       });
 
-      const getCategoryInfo = (cid) => categories.find(c => c.id === cid);
+      const getCategoryInfo = (cid) => allCategories.find(c => c.id === cid) || { id: cid, label: cid, icon: '◇', color: '#708090' };
       const formatShareText = (item) => { const ci = getCategoryInfo(item.category); return `${ci.icon} ${ci.label.toUpperCase()}\n\n${item.title}\n\n${item.content}\n\n— Shared from Commonplace`; };
-      const handleCopyText = async (item) => {
-        const text = formatShareText(item);
-        try { await navigator.clipboard.writeText(text); } catch(e) { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); }
-        setCopyFeedback(item.id); setTimeout(() => setCopyFeedback(null), 2000);
-      };
+      const handleCopyText = async (item) => { const text = formatShareText(item); try { await navigator.clipboard.writeText(text); } catch(e) { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); } setCopyFeedback(item.id); setTimeout(() => setCopyFeedback(null), 2000); };
       const handleNativeShare = async (item) => { const ci = getCategoryInfo(item.category); if (navigator.share) { try { await navigator.share({ title: item.title, text: `${ci.icon} ${item.title}\n\n${item.content}` }); setShareModalId(null); } catch(e) {} } };
       const handleShareEmail = (item) => { const ci = getCategoryInfo(item.category); window.location.href = `mailto:?subject=${encodeURIComponent(ci.icon+' '+item.title)}&body=${encodeURIComponent(formatShareText(item))}`; setShareModalId(null); };
       const handleShareTwitter = (item) => { window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(item.title+'\n\n"'+item.content.slice(0,180)+(item.content.length>180?'...':'')+'"')}`, '_blank'); setShareModalId(null); };
@@ -296,8 +327,9 @@
         headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
         settingsBtn: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: 8, borderRadius: 8, color: '#8B7355', lineHeight: 1 },
         searchInput: { width: '100%', padding: '12px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 16, background: '#FFFBF7', fontFamily: '"Source Sans 3", sans-serif' },
-        nav: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '12px 16px' : '16px 32px', display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' },
+        nav: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '12px 16px' : '16px 32px', display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', alignItems: 'center' },
         categoryTab: { padding: isMobile ? '8px 14px' : '10px 18px', border: 'none', borderRadius: 20, background: 'transparent', cursor: 'pointer', fontSize: isMobile ? 13 : 14, fontWeight: 500, color: '#5D5145', fontFamily: '"Source Sans 3", sans-serif', whiteSpace: 'nowrap', flexShrink: 0 },
+        addCatBtn: { padding: '8px 12px', border: '1px dashed rgba(139,115,85,0.4)', borderRadius: 20, background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#8B7355', fontFamily: '"Source Sans 3", sans-serif', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 },
         main: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0 16px 32px' : '0 32px 48px' },
         addButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: isMobile ? '14px 20px' : '14px 24px', background: '#8B7355', color: '#FDF8F3', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 500, cursor: 'pointer', marginBottom: 20, fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
         formCard: { background: '#FFFBF7', borderRadius: 12, padding: isMobile ? 20 : 28, marginBottom: 24, boxShadow: '0 4px 24px rgba(139,115,85,0.1)', animation: 'slideDown 0.3s ease', position: 'relative' },
@@ -335,7 +367,6 @@
         inputLabel: { display: 'block', fontSize: 13, fontWeight: 600, color: '#5D5145', marginBottom: 6 },
         helpText: { fontSize: 12, color: '#A89B8C', margin: '4px 0 16px' },
         dangerButton: { padding: '10px 16px', border: 'none', borderRadius: 6, background: 'rgba(205,92,92,0.1)', color: '#B85450', cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: '"Source Sans 3", sans-serif' },
-        statusBadge: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500 },
         errorText: { color: '#CD5C5C', fontSize: 13, margin: '8px 0 16px', padding: '8px 12px', background: 'rgba(205,92,92,0.08)', borderRadius: 6 },
       };
 
@@ -345,17 +376,81 @@
         <div style={st.container} onClick={() => shareModalId && setShareModalId(null)}>
           {lightboxUrl && <div className="lightbox" onClick={() => setLightboxUrl(null)}><img src={lightboxUrl} alt="Full size" /></div>}
 
+          {/* Add Category Modal */}
+          {showAddCategory && (
+            <div style={st.modalOverlay} onClick={() => setShowAddCategory(false)}>
+              <div style={st.modalContent} onClick={e => e.stopPropagation()}>
+                <h2 style={st.modalTitle}>New Category</h2>
+                <p style={st.modalSubtitle}>Create a custom category for your entries.</p>
+                <label style={st.inputLabel}>Category Name</label>
+                <input type="text" placeholder="e.g. Work Notes, Recipes, Travel..." value={newCatName} onChange={e => setNewCatName(e.target.value)} style={st.input} />
+                <label style={st.inputLabel}>Choose an Icon</label>
+                <div className="icon-grid">
+                  {iconOptions.map(icon => (
+                    <div key={icon} className={`icon-option ${newCatIcon === icon ? 'selected' : ''}`} onClick={() => setNewCatIcon(icon)}>{icon}</div>
+                  ))}
+                </div>
+                <label style={st.inputLabel}>Choose a Color</label>
+                <div className="color-grid">
+                  {colorOptions.map(color => (
+                    <div key={color} className={`color-option ${newCatColor === color ? 'selected' : ''}`} style={{ background: color }} onClick={() => setNewCatColor(color)} />
+                  ))}
+                </div>
+                <div style={{ padding: '12px 16px', background: 'rgba(139,115,85,0.06)', borderRadius: 8, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{newCatIcon}</span>
+                  <span style={{ fontWeight: 600, color: newCatColor }}>{newCatName || 'Preview'}</span>
+                </div>
+                <div style={st.formActions}>
+                  <button onClick={() => setShowAddCategory(false)} className="btn-secondary" style={st.cancelButton}>Cancel</button>
+                  <button onClick={handleAddCategory} className="btn-primary" style={st.saveButton}>Create Category</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Manage Categories Modal */}
+          {showManageCategories && (
+            <div style={st.modalOverlay} onClick={() => setShowManageCategories(false)}>
+              <div style={st.modalContent} onClick={e => e.stopPropagation()}>
+                <h2 style={st.modalTitle}>Manage Categories</h2>
+                <p style={st.modalSubtitle}>Default categories cannot be removed. Custom categories can be deleted.</p>
+                <h4 style={{ fontSize: 12, color: '#A89B8C', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px' }}>Default</h4>
+                {defaultCategories.map(cat => (
+                  <div key={cat.id} className="cat-manage-item">
+                    <div className="cat-manage-label"><span>{cat.icon}</span><span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span></div>
+                  </div>
+                ))}
+                {customCategories.length > 0 && (
+                  <>
+                    <h4 style={{ fontSize: 12, color: '#A89B8C', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '16px 0 8px' }}>Custom</h4>
+                    {customCategories.map(cat => (
+                      <div key={cat.id} className="cat-manage-item">
+                        <div className="cat-manage-label"><span>{cat.icon}</span><span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span></div>
+                        <button className="remove-cat" onClick={() => handleDeleteCategory(cat.id)} title="Delete category">✕</button>
+                      </div>
+                    ))}
+                  </>
+                )}
+                <div style={{ marginTop: 20, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowManageCategories(false)} className="btn-secondary" style={st.cancelButton}>Done</button>
+                  <button onClick={() => { setShowManageCategories(false); setShowAddCategory(true); }} className="btn-primary" style={st.saveButton}>+ Add New</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Settings Modal */}
           {showSettings && (
             <div style={st.modalOverlay} onClick={() => setShowSettings(false)}>
               <div style={st.modalContent} onClick={e => e.stopPropagation()}>
                 <h2 style={st.modalTitle}>⚙️ Settings</h2>
-                <p style={st.modalSubtitle}>Connect to Supabase to sync your notes and photos across all devices.</p>
+                <p style={st.modalSubtitle}>Connect to Supabase to sync everything across devices.</p>
                 {isConfigured ? (
                   <div>
-                    <div style={{ ...st.statusBadge, background: syncStatus === 'synced' ? 'rgba(107,142,107,0.15)' : syncStatus === 'error' ? 'rgba(205,92,92,0.15)' : 'rgba(184,134,11,0.15)', color: syncStatus === 'synced' ? '#6B8E6B' : syncStatus === 'error' ? '#CD5C5C' : '#B8860B', marginBottom: 20 }}>
-                      {syncStatus === 'synced' ? '✓ Connected & Synced' : syncStatus === 'error' ? '⚠ Connection Error' : '↻ Syncing...'}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: syncStatus === 'synced' ? 'rgba(107,142,107,0.15)' : syncStatus === 'error' ? 'rgba(205,92,92,0.15)' : 'rgba(184,134,11,0.15)', color: syncStatus === 'synced' ? '#6B8E6B' : syncStatus === 'error' ? '#CD5C5C' : '#B8860B', marginBottom: 20 }}>
+                      {syncStatus === 'synced' ? '✓ Connected & Synced' : syncStatus === 'error' ? '⚠ Error' : '↻ Syncing...'}
                     </div>
-                    <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 20 }}>Your notes and photos are syncing to Supabase.</p>
+                    <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 20 }}>Your notes, photos, and categories are syncing.</p>
                     <button onClick={fetchFromCloud} className="btn-secondary" style={{ ...st.cancelButton, marginRight: 12, marginBottom: 12 }}>↻ Refresh</button>
                     <button onClick={disconnectSupabase} style={st.dangerButton}>Disconnect</button>
                   </div>
@@ -363,10 +458,9 @@
                   <div>
                     <label style={st.inputLabel}>Supabase Project URL</label>
                     <input type="text" placeholder="https://xxxxx.supabase.co" value={supabaseUrl} onChange={e => setSupabaseUrl(e.target.value)} style={st.input} />
-                    <p style={st.helpText}>Found in Project Settings → Data API</p>
                     <label style={st.inputLabel}>Supabase API Key</label>
-                    <input type="text" placeholder="eyJ... or sb_publishable_..." value={supabaseKey} onChange={e => setSupabaseKey(e.target.value)} style={st.input} />
-                    <p style={st.helpText}>Use Legacy anon key (eyJ...) from Settings → API Keys</p>
+                    <input type="text" placeholder="eyJ..." value={supabaseKey} onChange={e => setSupabaseKey(e.target.value)} style={st.input} />
+                    <p style={st.helpText}>Use Legacy anon key from Settings → API Keys</p>
                     {connectError && <div style={st.errorText}>⚠ {connectError}</div>}
                     <div style={{ ...st.formActions, marginTop: 24 }}>
                       <button onClick={() => { setShowSettings(false); setConnectError(''); }} className="btn-secondary" style={st.cancelButton}>Cancel</button>
@@ -383,17 +477,11 @@
               <div style={st.headerTop}>
                 <div style={st.logoSection}>
                   <div style={st.logoMark}>✦</div>
-                  <div>
-                    <h1 style={st.title}>Commonplace</h1>
-                    <p style={st.subtitle}>Thoughts & discoveries</p>
-                  </div>
+                  <div><h1 style={st.title}>Commonplace</h1><p style={st.subtitle}>Thoughts & discoveries</p></div>
                 </div>
                 <div style={st.headerRight}>
-                  <div className={`sync-indicator ${syncDisp.cls}`}>
-                    {syncDisp.spin && <div className="spinner" />}
-                    {syncDisp.text}
-                  </div>
-                  <button className="settings-btn" onClick={() => setShowSettings(true)} style={st.settingsBtn} title="Settings">⚙️</button>
+                  <div className={`sync-indicator ${syncDisp.cls}`}>{syncDisp.spin && <div className="spinner" />}{syncDisp.text}</div>
+                  <button className="settings-btn" onClick={() => setShowSettings(true)} style={st.settingsBtn}>⚙️</button>
                 </div>
               </div>
               <input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={st.searchInput} />
@@ -402,11 +490,13 @@
 
           <nav style={st.nav}>
             <button className={`category-tab ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')} style={st.categoryTab}>All</button>
-            {categories.map(cat => (
+            {allCategories.map(cat => (
               <button key={cat.id} className={`category-tab ${activeCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveCategory(cat.id)} style={st.categoryTab}>
                 <span style={{ marginRight: 5 }}>{cat.icon}</span>{cat.label}
               </button>
             ))}
+            <button className="add-cat-btn" onClick={() => setShowAddCategory(true)} style={st.addCatBtn} title="Add category">+ New</button>
+            <button className="add-cat-btn" onClick={() => setShowManageCategories(true)} style={{ ...st.addCatBtn, borderStyle: 'solid', fontSize: 12 }} title="Manage categories">⋯</button>
           </nav>
 
           <main style={st.main}>
@@ -417,13 +507,11 @@
                 {uploading && <div className="uploading-overlay"><div className="spinner" style={{ width: 24, height: 24, borderWidth: 3, color: '#8B7355' }} /><span style={{ fontSize: 14, color: '#8B7355' }}>Uploading photo...</span></div>}
                 <h3 style={st.formTitle}>{editingId ? 'Edit Entry' : 'New Entry'}</h3>
                 <select value={newItem.category} onChange={e => setNewItem({ ...newItem, category: e.target.value })} style={st.select}>
-                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>)}
+                  {allCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>)}
                 </select>
                 <input type="text" placeholder="Title" value={newItem.title} onChange={e => setNewItem({ ...newItem, title: e.target.value })} style={st.input} />
                 <textarea placeholder="Your thoughts, notes, or recommendations..." value={newItem.content} onChange={e => setNewItem({ ...newItem, content: e.target.value })} style={st.textarea} />
-                
                 <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleImageSelect} style={{ display: 'none' }} />
-                
                 {imagePreview ? (
                   <div className="photo-upload-area has-image">
                     <img src={imagePreview} className="photo-preview" alt="Preview" />
@@ -436,13 +524,9 @@
                   <div className="photo-upload-area" onClick={() => fileInputRef.current?.click()}>
                     <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
                     <div style={{ fontSize: 14, color: '#8B7355', fontWeight: 500 }}>Add a photo</div>
-                    <div style={{ fontSize: 12, color: '#A89B8C', marginTop: 2 }}>
-                      {isMobile ? 'Tap to take a photo or choose from library' : 'Click to choose a photo'}
-                    </div>
-                    {!isConfigured && <div style={{ fontSize: 11, color: '#CD5C5C', marginTop: 6 }}>Connect Supabase in settings to enable photo uploads</div>}
+                    <div style={{ fontSize: 12, color: '#A89B8C', marginTop: 2 }}>{isMobile ? 'Tap to take a photo or choose from library' : 'Click to choose a photo'}</div>
                   </div>
                 )}
-
                 <div style={st.formActions}>
                   <button className="btn-secondary" onClick={() => { setIsAdding(false); setEditingId(null); setNewItem({ category: 'notes', title: '', content: '' }); removeImage(); }} style={st.cancelButton}>Cancel</button>
                   <button className="btn-primary" onClick={editingId ? handleSaveEdit : handleAdd} style={st.saveButton} disabled={uploading}>{editingId ? 'Save Changes' : 'Add Entry'}</button>
