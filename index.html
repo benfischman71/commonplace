@@ -126,8 +126,13 @@
     .color-option { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; }
     .color-option.selected { border-color: #2D2416; transform: scale(1.15); }
     .cat-manage-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background: rgba(139,115,85,0.04); margin-bottom: 6px; }
-    .cat-manage-label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .cat-manage-label { display: flex; align-items: center; gap: 8px; font-size: 14px; flex: 1; }
     .remove-cat { background: none; border: none; color: #B85450; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 4px; }
+    .cat-reorder-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 6px; color: #8B7355; border-radius: 4px; line-height: 1; }
+    .cat-reorder-btn:hover { background: rgba(139,115,85,0.1); }
+    .cat-reorder-btn:disabled { opacity: 0.25; cursor: default; }
+    .cat-reorder-btn:disabled:hover { background: none; }
+    .cat-manage-actions { display: flex; align-items: center; gap: 2px; }
   </style>
 </head>
 <body>
@@ -234,6 +239,9 @@
       const [showApp, setShowApp] = useState(false);
       const [items, setItems] = useState(() => { const l = loadLocal(); return l.length > 0 ? l : [{ id: 'welcome-1', category: 'notes', title: 'Welcome to Commonplace', content: 'Your personal space for thoughts and discoveries. Now with photos and custom categories! 📸', date: new Date().toISOString().split('T')[0], starred: true, image_url: null }]; });
       const [customCategories, setCustomCategories] = useState(loadLocalCats);
+      const [defaultCategoryOrder, setDefaultCategoryOrder] = useState(() => {
+        try { const s = localStorage.getItem('commonplace_default_cat_order'); return s ? JSON.parse(s) : [...defaultCategories]; } catch(e) { return [...defaultCategories]; }
+      });
       const [activeCategory, setActiveCategory] = useState('all');
       const [isAdding, setIsAdding] = useState(false);
       const [editingId, setEditingId] = useState(null);
@@ -262,7 +270,7 @@
       const [newCatColor, setNewCatColor] = useState('#8B7355');
       const fileInputRef = useRef(null);
 
-      const allCategories = [...defaultCategories, ...customCategories];
+      const allCategories = [...defaultCategoryOrder, ...customCategories];
 
       useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -408,6 +416,25 @@
         if (isConfigured) { try { await supabaseAPI.deleteCategory(catId); } catch(e) {} }
       };
 
+      const moveCategoryInList = (list, index, direction) => {
+        const newList = [...list];
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= newList.length) return newList;
+        [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
+        return newList;
+      };
+
+      const moveDefaultCategory = (index, direction) => {
+        const newDefaults = moveCategoryInList([...defaultCategoryOrder], index, direction);
+        setDefaultCategoryOrder(newDefaults);
+        localStorage.setItem('commonplace_default_cat_order', JSON.stringify(newDefaults));
+      };
+
+      const moveCustomCategory = (index, direction) => {
+        const newCustom = moveCategoryInList([...customCategories], index, direction);
+        setCustomCategories(newCustom); saveLocalCats(newCustom);
+      };
+
       const saveSupabaseConfig = async () => {
         if (!supabaseUrl || !supabaseKey) return; setConnectError('');
         localStorage.setItem('commonplace_supabase_config', JSON.stringify({ url: supabaseUrl.replace(/\/$/, ''), key: supabaseKey.trim() }));
@@ -550,20 +577,28 @@
             <div style={st.modalOverlay} onClick={() => setShowManageCategories(false)}>
               <div style={st.modalContent} onClick={e => e.stopPropagation()}>
                 <h2 style={st.modalTitle}>Manage Categories</h2>
-                <p style={st.modalSubtitle}>Default categories cannot be removed. Custom categories can be deleted.</p>
+                <p style={st.modalSubtitle}>Reorder with arrows. Custom categories can be deleted.</p>
                 <h4 style={{ fontSize: 12, color: '#A89B8C', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px' }}>Default</h4>
-                {defaultCategories.map(cat => (
+                {defaultCategoryOrder.map((cat, idx) => (
                   <div key={cat.id} className="cat-manage-item">
                     <div className="cat-manage-label"><span>{cat.icon}</span><span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span></div>
+                    <div className="cat-manage-actions">
+                      <button className="cat-reorder-btn" disabled={idx === 0} onClick={() => moveDefaultCategory(idx, -1)} title="Move up">↑</button>
+                      <button className="cat-reorder-btn" disabled={idx === defaultCategoryOrder.length - 1} onClick={() => moveDefaultCategory(idx, 1)} title="Move down">↓</button>
+                    </div>
                   </div>
                 ))}
                 {customCategories.length > 0 && (
                   <>
                     <h4 style={{ fontSize: 12, color: '#A89B8C', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '16px 0 8px' }}>Custom</h4>
-                    {customCategories.map(cat => (
+                    {customCategories.map((cat, idx) => (
                       <div key={cat.id} className="cat-manage-item">
                         <div className="cat-manage-label"><span>{cat.icon}</span><span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span></div>
-                        <button className="remove-cat" onClick={() => handleDeleteCategory(cat.id)} title="Delete category">✕</button>
+                        <div className="cat-manage-actions">
+                          <button className="cat-reorder-btn" disabled={idx === 0} onClick={() => moveCustomCategory(idx, -1)} title="Move up">↑</button>
+                          <button className="cat-reorder-btn" disabled={idx === customCategories.length - 1} onClick={() => moveCustomCategory(idx, 1)} title="Move down">↓</button>
+                          <button className="remove-cat" onClick={() => handleDeleteCategory(cat.id)} title="Delete category">✕</button>
+                        </div>
                       </div>
                     ))}
                   </>
