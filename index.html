@@ -14,13 +14,69 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html { font-size: 16px; }
+    html { font-size: 18px; }
     body { font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
     ::placeholder { color: #A89B8C; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes modalFade { from { opacity: 0; transform: translateY(-8px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes landingFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+    @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.4; } 50% { transform: scale(1.05); opacity: 0.6; } }
+    @keyframes logoReveal { from { opacity: 0; transform: scale(0.8) rotate(-5deg); } to { opacity: 1; transform: scale(1) rotate(0deg); } }
+    @keyframes lineGrow { from { width: 0; } to { width: 80px; } }
+    @keyframes landingExit { to { opacity: 0; transform: scale(1.02); } }
+    @keyframes appEnter { from { opacity: 0; } to { opacity: 1; } }
+
+    .landing-page {
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: linear-gradient(165deg, #FAF5EE 0%, #F0E8DC 40%, #E8DECE 70%, #F5EDE4 100%);
+      position: relative; overflow: hidden; text-align: center; padding: 40px 24px;
+    }
+    .landing-page::before {
+      content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(139,115,85,0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, rgba(107,83,68,0.05) 0%, transparent 50%);
+      animation: breathe 8s ease-in-out infinite; pointer-events: none;
+    }
+    .landing-page::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%238B7355' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none; opacity: 0.5;
+    }
+    .landing-content { position: relative; z-index: 1; }
+    .landing-logo { width: 88px; height: 88px; background: linear-gradient(145deg, #8B7355, #6B5344, #5A4636);
+      border-radius: 22px; display: flex; align-items: center; justify-content: center; color: #FDF8F3;
+      font-size: 36px; margin: 0 auto 32px; box-shadow: 0 8px 32px rgba(107,83,68,0.25), 0 2px 8px rgba(107,83,68,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+      animation: logoReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 0.2s;
+    }
+    .landing-title { font-family: 'Playfair Display', serif; font-size: clamp(36px, 8vw, 56px); font-weight: 700;
+      color: #2D2416; margin: 0 0 8px; letter-spacing: -0.5px;
+      animation: landingFadeIn 0.7s ease both; animation-delay: 0.5s;
+    }
+    .landing-line { width: 80px; height: 1px; background: linear-gradient(90deg, transparent, #8B7355, transparent);
+      margin: 16px auto; animation: lineGrow 0.6s ease both; animation-delay: 0.7s;
+    }
+    .landing-subtitle { font-family: 'Source Sans 3', sans-serif; font-size: clamp(15px, 3vw, 18px);
+      color: #8B7355; font-style: italic; font-weight: 300; margin: 0 0 48px; letter-spacing: 0.5px;
+      animation: landingFadeIn 0.7s ease both; animation-delay: 0.8s;
+    }
+    .landing-enter-btn { font-family: 'Source Sans 3', sans-serif; font-size: 16px; font-weight: 500;
+      color: #FDF8F3; background: linear-gradient(145deg, #8B7355, #7A6548); border: none; border-radius: 12px;
+      padding: 16px 48px; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+      box-shadow: 0 4px 20px rgba(139,115,85,0.3), 0 1px 3px rgba(139,115,85,0.2);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: landingFadeIn 0.7s ease both; animation-delay: 1s;
+    }
+    .landing-enter-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,115,85,0.35); background: linear-gradient(145deg, #7A6548, #6B5344); }
+    .landing-enter-btn:active { transform: translateY(0) scale(0.98); }
+    .landing-tagline { font-family: 'Source Sans 3', sans-serif; font-size: 12px; color: #B8A898;
+      margin-top: 24px; letter-spacing: 2px; text-transform: uppercase;
+      animation: landingFadeIn 0.7s ease both; animation-delay: 1.2s;
+    }
+    .landing-page.exiting { animation: landingExit 0.4s ease forwards; }
+    .app-wrapper.entering { animation: appEnter 0.4s ease both; animation-delay: 0.2s; }
     .card { transition: all 0.25s ease; }
     @media (hover: hover) {
       .card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(139,115,85,0.15); }
@@ -43,7 +99,7 @@
     .btn-primary:active, .btn-secondary:active, .category-tab:active { transform: scale(0.97); }
     .star-btn:active, .share-btn:active { transform: scale(0.9); }
     nav::-webkit-scrollbar { display: none; }
-    .sync-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 12px; background: rgba(139,115,85,0.1); }
+    .sync-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 12px; background: rgba(139,115,85,0.1); }
     .sync-indicator.synced { color: #6B8E6B; }
     .sync-indicator.syncing { color: #B8860B; }
     .sync-indicator.offline { color: #A89B8C; }
@@ -173,6 +229,9 @@
     const saveLocalCats = (cats) => { try { localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(cats)); } catch(e) {} };
 
     function NotesApp() {
+      const [showLanding, setShowLanding] = useState(true);
+      const [landingExiting, setLandingExiting] = useState(false);
+      const [showApp, setShowApp] = useState(false);
       const [items, setItems] = useState(() => { const l = loadLocal(); return l.length > 0 ? l : [{ id: 'welcome-1', category: 'notes', title: 'Welcome to Commonplace', content: 'Your personal space for thoughts and discoveries. Now with photos and custom categories! 📸', date: new Date().toISOString().split('T')[0], starred: true, image_url: null }]; });
       const [customCategories, setCustomCategories] = useState(loadLocalCats);
       const [activeCategory, setActiveCategory] = useState('all');
@@ -379,24 +438,24 @@
         headerTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? 12 : 16 },
         logoSection: { display: 'flex', alignItems: 'center', gap: 12 },
         logoMark: { width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, background: 'linear-gradient(135deg, #8B7355, #6B5344)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FDF8F3', fontSize: isMobile ? 16 : 20, flexShrink: 0 },
-        title: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 22 : 28, fontWeight: 600, margin: 0, color: '#2D2416' },
-        subtitle: { margin: 0, fontSize: isMobile ? 12 : 14, color: '#8B7355', fontStyle: 'italic' },
+        title: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 26 : 32, fontWeight: 600, margin: 0, color: '#2D2416' },
+        subtitle: { margin: 0, fontSize: isMobile ? 14 : 16, color: '#8B7355', fontStyle: 'italic' },
         headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
         settingsBtn: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: 8, borderRadius: 8, color: '#8B7355', lineHeight: 1 },
-        searchInput: { width: '100%', padding: '12px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 16, background: '#FFFBF7', fontFamily: '"Source Sans 3", sans-serif' },
+        searchInput: { width: '100%', padding: '14px 18px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, background: '#FFFBF7', fontFamily: '"Source Sans 3", sans-serif' },
         nav: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '12px 16px' : '16px 32px', display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', alignItems: 'center' },
-        categoryTab: { padding: isMobile ? '8px 14px' : '10px 18px', border: 'none', borderRadius: 20, background: 'transparent', cursor: 'pointer', fontSize: isMobile ? 13 : 14, fontWeight: 500, color: '#5D5145', fontFamily: '"Source Sans 3", sans-serif', whiteSpace: 'nowrap', flexShrink: 0 },
+        categoryTab: { padding: isMobile ? '10px 16px' : '12px 20px', border: 'none', borderRadius: 20, background: 'transparent', cursor: 'pointer', fontSize: isMobile ? 15 : 16, fontWeight: 500, color: '#5D5145', fontFamily: '"Source Sans 3", sans-serif', whiteSpace: 'nowrap', flexShrink: 0 },
         addCatBtn: { padding: '8px 12px', border: '1px dashed rgba(139,115,85,0.4)', borderRadius: 20, background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#8B7355', fontFamily: '"Source Sans 3", sans-serif', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 },
         main: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0 16px 32px' : '0 32px 48px' },
-        addButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: isMobile ? '14px 20px' : '14px 24px', background: '#8B7355', color: '#FDF8F3', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 500, cursor: 'pointer', marginBottom: 20, fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
+        addButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: isMobile ? '16px 22px' : '16px 28px', background: '#8B7355', color: '#FDF8F3', border: 'none', borderRadius: 8, fontSize: 17, fontWeight: 500, cursor: 'pointer', marginBottom: 20, fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
         formCard: { background: '#FFFBF7', borderRadius: 12, padding: isMobile ? 20 : 28, marginBottom: 24, boxShadow: '0 4px 24px rgba(139,115,85,0.1)', animation: 'slideDown 0.3s ease', position: 'relative' },
-        formTitle: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 18 : 20, fontWeight: 600, margin: '0 0 16px', color: '#2D2416' },
-        select: { width: '100%', padding: '12px 14px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 16, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif' },
-        input: { width: '100%', padding: '12px 14px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 16, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif' },
-        textarea: { width: '100%', padding: '12px 14px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 16, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif', resize: 'vertical', minHeight: 100, lineHeight: 1.6 },
+        formTitle: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 20 : 24, fontWeight: 600, margin: '0 0 16px', color: '#2D2416' },
+        select: { width: '100%', padding: '14px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif' },
+        input: { width: '100%', padding: '14px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif' },
+        textarea: { width: '100%', padding: '14px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif', resize: 'vertical', minHeight: 100, lineHeight: 1.6 },
         formActions: { display: 'flex', gap: 12, justifyContent: 'flex-end', flexDirection: isMobile ? 'column-reverse' : 'row' },
-        cancelButton: { padding: '12px 20px', border: '1px solid rgba(139,115,85,0.3)', borderRadius: 6, background: 'transparent', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#5D5145', fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
-        saveButton: { padding: '12px 24px', border: 'none', borderRadius: 6, background: '#8B7355', color: '#FDF8F3', cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
+        cancelButton: { padding: '14px 22px', border: '1px solid rgba(139,115,85,0.3)', borderRadius: 6, background: 'transparent', cursor: 'pointer', fontSize: 16, fontWeight: 500, color: '#5D5145', fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
+        saveButton: { padding: '14px 28px', border: 'none', borderRadius: 6, background: '#8B7355', color: '#FDF8F3', cursor: 'pointer', fontSize: 16, fontWeight: 500, fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
         grid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? 16 : 20 },
         card: { background: '#FFFBF7', borderRadius: 10, padding: isMobile ? 18 : 22, boxShadow: '0 2px 16px rgba(139,115,85,0.08)', animation: 'fadeIn 0.4s ease forwards', opacity: 0, overflow: 'hidden' },
         cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -405,32 +464,52 @@
         shareButton: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: '6px 8px', borderRadius: 4, color: '#8B7355' },
         shareModal: { position: 'absolute', top: '100%', right: 0, marginTop: 8, background: '#FFFBF7', borderRadius: 10, boxShadow: '0 8px 32px rgba(45,36,22,0.2)', border: '1px solid rgba(139,115,85,0.15)', minWidth: isMobile ? 180 : 200, zIndex: 100, animation: 'modalFade 0.2s ease', overflow: 'hidden' },
         shareModalHeader: { padding: '12px 16px', fontSize: 11, fontWeight: 600, color: '#8B7355', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(139,115,85,0.1)' },
-        shareOption: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: '#3D3428', textAlign: 'left', fontFamily: '"Source Sans 3", sans-serif' },
+        shareOption: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, color: '#3D3428', textAlign: 'left', fontFamily: '"Source Sans 3", sans-serif' },
         shareIcon: { fontSize: 16, width: 20, textAlign: 'center' },
-        categoryBadge: { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' },
+        categoryBadge: { fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' },
         starButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: '4px 6px' },
-        cardTitle: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 17 : 19, fontWeight: 600, margin: '0 0 8px', color: '#2D2416', lineHeight: 1.3, wordBreak: 'break-word' },
-        cardContent: { fontSize: 14, lineHeight: 1.65, color: '#5D5145', margin: '0 0 14px', wordBreak: 'break-word', overflowWrap: 'anywhere' },
+        cardTitle: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 19 : 22, fontWeight: 600, margin: '0 0 8px', color: '#2D2416', lineHeight: 1.3, wordBreak: 'break-word' },
+        cardContent: { fontSize: 16, lineHeight: 1.65, color: '#5D5145', margin: '0 0 14px', wordBreak: 'break-word', overflowWrap: 'anywhere' },
         cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid rgba(139,115,85,0.1)', flexWrap: 'wrap', gap: 8 },
-        date: { fontSize: 12, color: '#A89B8C', fontStyle: 'italic' },
+        date: { fontSize: 14, color: '#A89B8C', fontStyle: 'italic' },
         cardActions: { display: 'flex', gap: 8 },
-        editButton: { padding: '8px 14px', border: 'none', borderRadius: 4, background: 'rgba(139,115,85,0.08)', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#6B5A48', fontFamily: '"Source Sans 3", sans-serif' },
-        deleteButton: { padding: '8px 14px', border: 'none', borderRadius: 4, background: 'rgba(205,92,92,0.08)', cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#B85450', fontFamily: '"Source Sans 3", sans-serif' },
-        footer: { textAlign: 'center', padding: '20px', color: '#A89B8C', fontSize: 12, borderTop: '1px solid rgba(139,115,85,0.1)', letterSpacing: '1px' },
+        editButton: { padding: '8px 14px', border: 'none', borderRadius: 4, background: 'rgba(139,115,85,0.08)', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#6B5A48', fontFamily: '"Source Sans 3", sans-serif' },
+        deleteButton: { padding: '8px 14px', border: 'none', borderRadius: 4, background: 'rgba(205,92,92,0.08)', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#B85450', fontFamily: '"Source Sans 3", sans-serif' },
+        footer: { textAlign: 'center', padding: '20px', color: '#A89B8C', fontSize: 14, borderTop: '1px solid rgba(139,115,85,0.1)', letterSpacing: '1px' },
         modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(45,36,22,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
         modalContent: { background: '#FFFBF7', borderRadius: 16, padding: isMobile ? 24 : 32, maxWidth: 480, width: '100%', maxHeight: '90vh', overflow: 'auto', animation: 'modalFade 0.2s ease' },
-        modalTitle: { fontFamily: '"Playfair Display", serif', fontSize: 22, fontWeight: 600, margin: '0 0 8px', color: '#2D2416' },
-        modalSubtitle: { fontSize: 14, color: '#8B7355', margin: '0 0 24px', lineHeight: 1.5 },
-        inputLabel: { display: 'block', fontSize: 13, fontWeight: 600, color: '#5D5145', marginBottom: 6 },
-        helpText: { fontSize: 12, color: '#A89B8C', margin: '4px 0 16px' },
-        dangerButton: { padding: '10px 16px', border: 'none', borderRadius: 6, background: 'rgba(205,92,92,0.1)', color: '#B85450', cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: '"Source Sans 3", sans-serif' },
-        errorText: { color: '#CD5C5C', fontSize: 13, margin: '8px 0 16px', padding: '8px 12px', background: 'rgba(205,92,92,0.08)', borderRadius: 6 },
+        modalTitle: { fontFamily: '"Playfair Display", serif', fontSize: 26, fontWeight: 600, margin: '0 0 8px', color: '#2D2416' },
+        modalSubtitle: { fontSize: 16, color: '#8B7355', margin: '0 0 24px', lineHeight: 1.5 },
+        inputLabel: { display: 'block', fontSize: 15, fontWeight: 600, color: '#5D5145', marginBottom: 6 },
+        helpText: { fontSize: 14, color: '#A89B8C', margin: '4px 0 16px' },
+        dangerButton: { padding: '12px 18px', border: 'none', borderRadius: 6, background: 'rgba(205,92,92,0.1)', color: '#B85450', cursor: 'pointer', fontSize: 16, fontWeight: 500, fontFamily: '"Source Sans 3", sans-serif' },
+        errorText: { color: '#CD5C5C', fontSize: 15, margin: '8px 0 16px', padding: '8px 12px', background: 'rgba(205,92,92,0.08)', borderRadius: 6 },
       };
 
       const syncDisp = syncStatus === 'synced' ? { text: '✓ Synced', cls: 'synced' } : syncStatus === 'syncing' ? { text: 'Syncing', cls: 'syncing', spin: true } : syncStatus === 'error' ? { text: '⚠ Error', cls: 'error' } : { text: 'Local only', cls: 'offline' };
 
+      const handleEnterApp = () => {
+        setLandingExiting(true);
+        setTimeout(() => { setShowLanding(false); setShowApp(true); }, 400);
+      };
+
+      if (showLanding) {
+        return (
+          <div className={`landing-page ${landingExiting ? 'exiting' : ''}`}>
+            <div className="landing-content">
+              <div className="landing-logo">✦</div>
+              <h1 className="landing-title">Commonplace</h1>
+              <div className="landing-line" />
+              <p className="landing-subtitle">A space for thoughts & discoveries</p>
+              <button className="landing-enter-btn" onClick={handleEnterApp}>Open Journal</button>
+              <p className="landing-tagline">Notes · Photos · Ideas</p>
+            </div>
+          </div>
+        );
+      }
+
       return (
-        <div style={st.container} onClick={() => shareModalId && setShareModalId(null)}>
+        <div style={st.container} className={showApp ? 'app-wrapper entering' : ''} onClick={() => shareModalId && setShareModalId(null)}>
           {lightboxUrl && <div className="lightbox" onClick={() => setLightboxUrl(null)}><img src={lightboxUrl} alt="Full size" /></div>}
 
           {/* Add Category Modal */}
