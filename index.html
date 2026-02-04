@@ -437,7 +437,7 @@
         headerContent: { maxWidth: 1200, margin: '0 auto' },
         headerTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? 12 : 16 },
         logoSection: { display: 'flex', alignItems: 'center', gap: 12 },
-        logoMark: { width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, background: 'linear-gradient(135deg, #8B7355, #6B5344)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FDF8F3', fontSize: isMobile ? 16 : 20, flexShrink: 0 },
+        logoMark: { width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, background: 'linear-gradient(135deg, #8B7355, #6B5344)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FDF8F3', fontSize: isMobile ? 16 : 20, flexShrink: 0, cursor: 'pointer', transition: 'transform 0.2s' },
         title: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 26 : 32, fontWeight: 600, margin: 0, color: '#2D2416' },
         subtitle: { margin: 0, fontSize: isMobile ? 14 : 16, color: '#8B7355', fontStyle: 'italic' },
         headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
@@ -613,7 +613,7 @@
             <div style={st.headerContent}>
               <div style={st.headerTop}>
                 <div style={st.logoSection}>
-                  <div style={st.logoMark}>✦</div>
+                  <div style={st.logoMark} onClick={() => { setShowApp(false); setShowLanding(true); setLandingExiting(false); }} title="Home" role="button">✦</div>
                   <div><h1 style={st.title}>Commonplace</h1><p style={st.subtitle}>Thoughts & discoveries</p></div>
                 </div>
                 <div style={st.headerRight}>
