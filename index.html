@@ -239,8 +239,12 @@
       const [showApp, setShowApp] = useState(false);
       const [items, setItems] = useState(() => { const l = loadLocal(); return l.length > 0 ? l : [{ id: 'welcome-1', category: 'notes', title: 'Welcome to Commonplace', content: 'Your personal space for thoughts and discoveries. Now with photos and custom categories! 📸', date: new Date().toISOString().split('T')[0], starred: true, image_url: null }]; });
       const [customCategories, setCustomCategories] = useState(loadLocalCats);
-      const [defaultCategoryOrder, setDefaultCategoryOrder] = useState(() => {
-        try { const s = localStorage.getItem('commonplace_default_cat_order'); return s ? JSON.parse(s) : [...defaultCategories]; } catch(e) { return [...defaultCategories]; }
+      const [categoryOrder, setCategoryOrder] = useState(() => {
+        try {
+          const s = localStorage.getItem('commonplace_cat_order');
+          if (s) return JSON.parse(s);
+        } catch(e) {}
+        return null;
       });
       const [activeCategory, setActiveCategory] = useState('all');
       const [isAdding, setIsAdding] = useState(false);
@@ -270,7 +274,23 @@
       const [newCatColor, setNewCatColor] = useState('#8B7355');
       const fileInputRef = useRef(null);
 
-      const allCategories = [...defaultCategoryOrder, ...customCategories];
+      // Build the ordered category list
+      const buildAllCategories = () => {
+        const allCats = [...defaultCategories, ...customCategories];
+        if (!categoryOrder) return allCats;
+        // Reorder based on saved order, append any new ones at the end
+        const ordered = [];
+        for (const id of categoryOrder) {
+          const cat = allCats.find(c => c.id === id);
+          if (cat) ordered.push(cat);
+        }
+        // Add any categories not in the saved order
+        for (const cat of allCats) {
+          if (!ordered.find(c => c.id === cat.id)) ordered.push(cat);
+        }
+        return ordered;
+      };
+      const allCategories = buildAllCategories();
 
       useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -401,6 +421,9 @@
         if (allCategories.find(c => c.id === id)) { alert('A category with this name already exists.'); return; }
         const newCat = { id, label: newCatName.trim(), icon: newCatIcon, color: newCatColor };
         const updated = [...customCategories, newCat]; setCustomCategories(updated); saveLocalCats(updated);
+        const newOrder = [...allCategories.map(c => c.id), newCat.id];
+        setCategoryOrder(newOrder);
+        localStorage.setItem('commonplace_cat_order', JSON.stringify(newOrder));
         setNewCatName(''); setNewCatIcon('📝'); setNewCatColor('#8B7355'); setShowAddCategory(false);
         if (isConfigured) { try { await supabaseAPI.upsertCategory(newCat); } catch(e) { console.error('Category sync error:', e); } }
       };
@@ -412,27 +435,21 @@
           if (isConfigured) { for (const item of movedItems.filter(i => entriesInCat.some(e => e.id === i.id))) { try { await supabaseAPI.upsertEntry(item); } catch(e) {} } }
         }
         const updated = customCategories.filter(c => c.id !== catId); setCustomCategories(updated); saveLocalCats(updated);
+        const newOrder = (categoryOrder || allCategories.map(c => c.id)).filter(id => id !== catId);
+        setCategoryOrder(newOrder);
+        localStorage.setItem('commonplace_cat_order', JSON.stringify(newOrder));
         if (activeCategory === catId) setActiveCategory('all');
         if (isConfigured) { try { await supabaseAPI.deleteCategory(catId); } catch(e) {} }
       };
 
-      const moveCategoryInList = (list, index, direction) => {
-        const newList = [...list];
+      const moveCategoryInList = (index, direction) => {
+        const newList = [...allCategories];
         const targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= newList.length) return newList;
+        if (targetIndex < 0 || targetIndex >= newList.length) return;
         [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
-        return newList;
-      };
-
-      const moveDefaultCategory = (index, direction) => {
-        const newDefaults = moveCategoryInList([...defaultCategoryOrder], index, direction);
-        setDefaultCategoryOrder(newDefaults);
-        localStorage.setItem('commonplace_default_cat_order', JSON.stringify(newDefaults));
-      };
-
-      const moveCustomCategory = (index, direction) => {
-        const newCustom = moveCategoryInList([...customCategories], index, direction);
-        setCustomCategories(newCustom); saveLocalCats(newCustom);
+        const newOrder = newList.map(c => c.id);
+        setCategoryOrder(newOrder);
+        localStorage.setItem('commonplace_cat_order', JSON.stringify(newOrder));
       };
 
       const saveSupabaseConfig = async () => {
@@ -456,7 +473,35 @@
       const handleCopyText = async (item) => { const text = formatShareText(item); try { await navigator.clipboard.writeText(text); } catch(e) { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); } setCopyFeedback(item.id); setTimeout(() => setCopyFeedback(null), 2000); };
       const handleNativeShare = async (item) => { const ci = getCategoryInfo(item.category); if (navigator.share) { try { await navigator.share({ title: item.title, text: `${ci.icon} ${item.title}\n\n${item.content}` }); setShareModalId(null); } catch(e) {} } };
       const handleShareEmail = (item) => { const ci = getCategoryInfo(item.category); window.location.href = `mailto:?subject=${encodeURIComponent(ci.icon+' '+item.title)}&body=${encodeURIComponent(formatShareText(item))}`; setShareModalId(null); };
+      const handleShareSMS = (item) => { const text = formatShareText(item); window.location.href = `sms:?&body=${encodeURIComponent(text)}`; setShareModalId(null); };
       const handleShareTwitter = (item) => { window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(item.title+'\n\n"'+item.content.slice(0,180)+(item.content.length>180?'...':'')+'"')}`, '_blank'); setShareModalId(null); };
+      const handleShareWhatsApp = (item) => { const text = formatShareText(item); window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); setShareModalId(null); };
+      
+      const handleShareToContact = async (item, type) => {
+        if ('contacts' in navigator && 'ContactsManager' in window) {
+          try {
+            const props = type === 'sms' ? ['name', 'tel'] : ['name', 'email'];
+            const contacts = await navigator.contacts.select(props, { multiple: false });
+            if (contacts && contacts.length > 0) {
+              const contact = contacts[0];
+              const text = formatShareText(item);
+              if (type === 'sms' && contact.tel?.[0]) {
+                window.location.href = `sms:${contact.tel[0]}?&body=${encodeURIComponent(text)}`;
+              } else if (type === 'email' && contact.email?.[0]) {
+                const ci = getCategoryInfo(item.category);
+                window.location.href = `mailto:${contact.email[0]}?subject=${encodeURIComponent(ci.icon+' '+item.title)}&body=${encodeURIComponent(text)}`;
+              }
+            }
+          } catch(e) { 
+            if (type === 'sms') handleShareSMS(item);
+            else handleShareEmail(item);
+          }
+        } else {
+          if (type === 'sms') handleShareSMS(item);
+          else handleShareEmail(item);
+        }
+        setShareModalId(null);
+      };
 
       const st = {
         container: { minHeight: '100vh', background: 'linear-gradient(180deg, #FDF8F3 0%, #F5EDE4 100%)', fontFamily: '"Source Sans 3", -apple-system, sans-serif', color: '#3D3428', paddingBottom: 'env(safe-area-inset-bottom)' },
@@ -489,10 +534,11 @@
         cardHeaderActions: { display: 'flex', alignItems: 'center', gap: 2 },
         shareContainer: { position: 'relative' },
         shareButton: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: '6px 8px', borderRadius: 4, color: '#8B7355' },
-        shareModal: { position: 'absolute', top: '100%', right: 0, marginTop: 8, background: '#FFFBF7', borderRadius: 10, boxShadow: '0 8px 32px rgba(45,36,22,0.2)', border: '1px solid rgba(139,115,85,0.15)', minWidth: isMobile ? 180 : 200, zIndex: 100, animation: 'modalFade 0.2s ease', overflow: 'hidden' },
-        shareModalHeader: { padding: '12px 16px', fontSize: 11, fontWeight: 600, color: '#8B7355', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(139,115,85,0.1)' },
-        shareOption: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, color: '#3D3428', textAlign: 'left', fontFamily: '"Source Sans 3", sans-serif' },
-        shareIcon: { fontSize: 16, width: 20, textAlign: 'center' },
+        shareModal: { position: 'absolute', top: '100%', right: 0, marginTop: 8, background: '#FFFBF7', borderRadius: 12, boxShadow: '0 8px 32px rgba(45,36,22,0.2)', border: '1px solid rgba(139,115,85,0.15)', minWidth: isMobile ? 220 : 240, zIndex: 100, animation: 'modalFade 0.2s ease', overflow: 'hidden' },
+        shareModalHeader: { padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#8B7355', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(139,115,85,0.1)' },
+        shareOption: { display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, color: '#3D3428', textAlign: 'left', fontFamily: '"Source Sans 3", sans-serif' },
+        shareIcon: { fontSize: 20, width: 24, textAlign: 'center' },
+        shareDivider: { height: 1, background: 'rgba(139,115,85,0.1)', margin: '0' },
         categoryBadge: { fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' },
         starButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: '4px 6px' },
         cardTitle: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 19 : 22, fontWeight: 600, margin: '0 0 8px', color: '#2D2416', lineHeight: 1.3, wordBreak: 'break-word' },
@@ -577,32 +623,24 @@
             <div style={st.modalOverlay} onClick={() => setShowManageCategories(false)}>
               <div style={st.modalContent} onClick={e => e.stopPropagation()}>
                 <h2 style={st.modalTitle}>Manage Categories</h2>
-                <p style={st.modalSubtitle}>Reorder with arrows. Custom categories can be deleted.</p>
-                <h4 style={{ fontSize: 12, color: '#A89B8C', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px' }}>Default</h4>
-                {defaultCategoryOrder.map((cat, idx) => (
-                  <div key={cat.id} className="cat-manage-item">
-                    <div className="cat-manage-label"><span>{cat.icon}</span><span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span></div>
-                    <div className="cat-manage-actions">
-                      <button className="cat-reorder-btn" disabled={idx === 0} onClick={() => moveDefaultCategory(idx, -1)} title="Move up">↑</button>
-                      <button className="cat-reorder-btn" disabled={idx === defaultCategoryOrder.length - 1} onClick={() => moveDefaultCategory(idx, 1)} title="Move down">↓</button>
-                    </div>
-                  </div>
-                ))}
-                {customCategories.length > 0 && (
-                  <>
-                    <h4 style={{ fontSize: 12, color: '#A89B8C', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '16px 0 8px' }}>Custom</h4>
-                    {customCategories.map((cat, idx) => (
-                      <div key={cat.id} className="cat-manage-item">
-                        <div className="cat-manage-label"><span>{cat.icon}</span><span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span></div>
-                        <div className="cat-manage-actions">
-                          <button className="cat-reorder-btn" disabled={idx === 0} onClick={() => moveCustomCategory(idx, -1)} title="Move up">↑</button>
-                          <button className="cat-reorder-btn" disabled={idx === customCategories.length - 1} onClick={() => moveCustomCategory(idx, 1)} title="Move down">↓</button>
-                          <button className="remove-cat" onClick={() => handleDeleteCategory(cat.id)} title="Delete category">✕</button>
-                        </div>
+                <p style={st.modalSubtitle}>Use arrows to reorder. Custom categories can be deleted.</p>
+                {allCategories.map((cat, idx) => {
+                  const isCustom = customCategories.some(c => c.id === cat.id);
+                  return (
+                    <div key={cat.id} className="cat-manage-item">
+                      <div className="cat-manage-label">
+                        <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                        <span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span>
+                        {!isCustom && <span style={{ fontSize: 11, color: '#A89B8C', marginLeft: 4 }}></span>}
                       </div>
-                    ))}
-                  </>
-                )}
+                      <div className="cat-manage-actions">
+                        <button className="cat-reorder-btn" disabled={idx === 0} onClick={() => moveCategoryInList(idx, -1)} title="Move up">↑</button>
+                        <button className="cat-reorder-btn" disabled={idx === allCategories.length - 1} onClick={() => moveCategoryInList(idx, 1)} title="Move down">↓</button>
+                        {isCustom && <button className="remove-cat" onClick={() => handleDeleteCategory(cat.id)} title="Delete category">✕</button>}
+                      </div>
+                    </div>
+                  );
+                })}
                 <div style={{ marginTop: 20, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                   <button onClick={() => setShowManageCategories(false)} className="btn-secondary" style={st.cancelButton}>Done</button>
                   <button onClick={() => { setShowManageCategories(false); setShowAddCategory(true); }} className="btn-primary" style={st.saveButton}>+ Add New</button>
@@ -724,10 +762,14 @@
                           <button className="share-btn" onClick={() => setShareModalId(shareModalId === item.id ? null : item.id)} style={st.shareButton}>↗</button>
                           {shareModalId === item.id && (
                             <div style={st.shareModal}>
-                              <div style={st.shareModalHeader}>Share</div>
-                              <button onClick={() => handleCopyText(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>📋</span>{copyFeedback === item.id ? 'Copied!' : 'Copy text'}</button>
+                              <div style={st.shareModalHeader}>Share this entry</div>
                               {navigator.share && <button onClick={() => handleNativeShare(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>📤</span>Share...</button>}
-                              <button onClick={() => handleShareEmail(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>✉️</span>Email</button>
+                              {navigator.share && <div style={st.shareDivider} />}
+                              <button onClick={() => handleShareToContact(item, 'sms')} style={st.shareOption} className="share-option"><span style={st.shareIcon}>💬</span>Text Message</button>
+                              <button onClick={() => handleShareToContact(item, 'email')} style={st.shareOption} className="share-option"><span style={st.shareIcon}>✉️</span>Email</button>
+                              <button onClick={() => handleShareWhatsApp(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>📱</span>WhatsApp</button>
+                              <div style={st.shareDivider} />
+                              <button onClick={() => handleCopyText(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>📋</span>{copyFeedback === item.id ? '✓ Copied!' : 'Copy text'}</button>
                               <button onClick={() => handleShareTwitter(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>𝕏</span>Post on X</button>
                             </div>
                           )}
