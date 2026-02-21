@@ -134,6 +134,25 @@
     .cat-reorder-btn:disabled:hover { background: none; }
     .cat-manage-actions { display: flex; align-items: center; gap: 2px; }
     .photo-saved-badge { display: inline-block; font-size: 11px; color: #6B8E6B; background: rgba(107,142,107,0.1); padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+    .auth-page {
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: linear-gradient(165deg, #FAF5EE 0%, #F0E8DC 40%, #E8DECE 70%, #F5EDE4 100%);
+      padding: 40px 24px; text-align: center;
+    }
+    .auth-card {
+      background: #FFFBF7; border-radius: 16px; padding: 32px; max-width: 400px; width: 100%;
+      box-shadow: 0 8px 32px rgba(107,83,68,0.15); animation: modalFade 0.3s ease;
+    }
+    .auth-card h2 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 600; color: #2D2416; margin: 0 0 8px; }
+    .auth-card p { font-size: 15px; color: #8B7355; margin: 0 0 24px; }
+    .auth-input { width: 100%; padding: 14px 16px; border: 1px solid rgba(139,115,85,0.2); border-radius: 8px; font-size: 16px; margin-bottom: 12px; background: #FDF8F3; font-family: 'Source Sans 3', sans-serif; }
+    .auth-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; background: #8B7355; color: #FDF8F3; font-size: 16px; font-weight: 500; cursor: pointer; font-family: 'Source Sans 3', sans-serif; margin-bottom: 12px; }
+    .auth-btn:hover { background: #7A6548; }
+    .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .auth-switch { font-size: 14px; color: #8B7355; background: none; border: none; cursor: pointer; text-decoration: underline; font-family: 'Source Sans 3', sans-serif; }
+    .auth-error { color: #CD5C5C; font-size: 14px; margin-bottom: 12px; padding: 8px 12px; background: rgba(205,92,92,0.08); border-radius: 6px; }
+    .logout-btn { background: none; border: none; font-size: 13px; color: #A89B8C; cursor: pointer; padding: 4px 8px; font-family: 'Source Sans 3', sans-serif; }
+    .logout-btn:hover { color: #CD5C5C; }
   </style>
 </head>
 <body>
@@ -149,37 +168,109 @@
       getConfig() {
         const saved = JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null');
         if (saved) return saved;
-        // Auto-use hardcoded config
         return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY };
       },
-      headers(apiKey) { return { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' }; },
+      getAuth() { return JSON.parse(localStorage.getItem('commonplace_auth') || 'null'); },
+      saveAuth(auth) { localStorage.setItem('commonplace_auth', JSON.stringify(auth)); },
+      clearAuth() { localStorage.removeItem('commonplace_auth'); },
+      headers(apiKey, token) {
+        return {
+          'apikey': apiKey,
+          'Authorization': `Bearer ${token || apiKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        };
+      },
+      async signup(email, password) {
+        const c = this.getConfig();
+        const res = await fetch(`${c.url}/auth/v1/signup`, {
+          method: 'POST',
+          headers: { 'apikey': c.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error_description || data.msg || data.message || 'Signup failed');
+        if (data.access_token) {
+          this.saveAuth({ access_token: data.access_token, refresh_token: data.refresh_token, user: data.user });
+        }
+        return data;
+      },
+      async login(email, password) {
+        const c = this.getConfig();
+        const res = await fetch(`${c.url}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: { 'apikey': c.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error_description || data.msg || data.message || 'Login failed');
+        this.saveAuth({ access_token: data.access_token, refresh_token: data.refresh_token, user: data.user });
+        return data;
+      },
+      async refreshSession() {
+        const c = this.getConfig();
+        const auth = this.getAuth();
+        if (!auth?.refresh_token) return null;
+        try {
+          const res = await fetch(`${c.url}/auth/v1/token?grant_type=refresh_token`, {
+            method: 'POST',
+            headers: { 'apikey': c.key, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: auth.refresh_token })
+          });
+          if (!res.ok) { this.clearAuth(); return null; }
+          const data = await res.json();
+          this.saveAuth({ access_token: data.access_token, refresh_token: data.refresh_token, user: data.user });
+          return data;
+        } catch(e) { return null; }
+      },
+      async logout() {
+        const c = this.getConfig();
+        const auth = this.getAuth();
+        if (auth?.access_token) {
+          try {
+            await fetch(`${c.url}/auth/v1/logout`, {
+              method: 'POST',
+              headers: { 'apikey': c.key, 'Authorization': `Bearer ${auth.access_token}` }
+            });
+          } catch(e) {}
+        }
+        this.clearAuth();
+      },
+      getToken() {
+        const auth = this.getAuth();
+        return auth?.access_token || null;
+      },
+      getUserId() {
+        const auth = this.getAuth();
+        return auth?.user?.id || null;
+      },
       async fetchEntries() {
-        const c = this.getConfig(); if (!c) return null;
-        const res = await fetch(`${c.url}/rest/v1/entries?select=*&order=created_at.desc`, { headers: this.headers(c.key) });
+        const c = this.getConfig(); const t = this.getToken(); if (!t) return null;
+        const res = await fetch(`${c.url}/rest/v1/entries?select=*&order=created_at.desc`, { headers: this.headers(c.key, t) });
         if (!res.ok) throw new Error(`${res.status}`); return await res.json();
       },
       async upsertEntry(entry) {
-        const c = this.getConfig(); if (!c) return null;
+        const c = this.getConfig(); const t = this.getToken(); const uid = this.getUserId(); if (!t) return null;
         const res = await fetch(`${c.url}/rest/v1/entries`, {
-          method: 'POST', headers: { ...this.headers(c.key), 'Prefer': 'resolution=merge-duplicates,return=representation' },
-          body: JSON.stringify({ id: entry.id, category: entry.category, title: entry.title, content: entry.content, date: entry.date, starred: entry.starred, image_url: entry.image_url || null, updated_at: new Date().toISOString() })
+          method: 'POST', headers: { ...this.headers(c.key, t), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({ id: entry.id, category: entry.category, title: entry.title, content: entry.content, date: entry.date, starred: entry.starred, image_url: entry.image_url || null, user_id: uid, updated_at: new Date().toISOString() })
         });
         if (!res.ok) throw new Error(`${res.status}`); return await res.json();
       },
       async deleteEntry(id) {
-        const c = this.getConfig(); if (!c) return null;
-        const res = await fetch(`${c.url}/rest/v1/entries?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key) });
+        const c = this.getConfig(); const t = this.getToken(); if (!t) return null;
+        const res = await fetch(`${c.url}/rest/v1/entries?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key, t) });
         if (!res.ok) throw new Error(`${res.status}`); return true;
       },
       async uploadImage(file) {
-        const c = this.getConfig(); if (!c) throw new Error('Not configured');
+        const c = this.getConfig(); const t = this.getToken(); if (!t) throw new Error('Not authenticated');
         const ext = (file.name || 'photo.jpg').split('.').pop() || 'jpg';
         const contentType = file.type || 'image/jpeg';
         const filename = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
         console.log('Uploading image:', filename, 'size:', file.size, 'type:', contentType);
         const res = await fetch(`${c.url}/storage/v1/object/images/${filename}`, {
           method: 'POST',
-          headers: { 'apikey': c.key, 'Authorization': `Bearer ${c.key}`, 'Content-Type': contentType, 'x-upsert': 'true' },
+          headers: { 'apikey': c.key, 'Authorization': `Bearer ${t}`, 'Content-Type': contentType, 'x-upsert': 'true' },
           body: file
         });
         if (!res.ok) {
@@ -192,26 +283,26 @@
         return publicUrl;
       },
       async fetchCategories() {
-        const c = this.getConfig(); if (!c) return null;
-        const res = await fetch(`${c.url}/rest/v1/categories?select=*&order=created_at.asc`, { headers: this.headers(c.key) });
+        const c = this.getConfig(); const t = this.getToken(); if (!t) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories?select=*&order=created_at.asc`, { headers: this.headers(c.key, t) });
         if (!res.ok) throw new Error(`${res.status}`); return await res.json();
       },
       async upsertCategory(cat) {
-        const c = this.getConfig(); if (!c) return null;
+        const c = this.getConfig(); const t = this.getToken(); const uid = this.getUserId(); if (!t) return null;
         const res = await fetch(`${c.url}/rest/v1/categories`, {
-          method: 'POST', headers: { ...this.headers(c.key), 'Prefer': 'resolution=merge-duplicates,return=representation' },
-          body: JSON.stringify({ id: cat.id, label: cat.label, icon: cat.icon, color: cat.color })
+          method: 'POST', headers: { ...this.headers(c.key, t), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({ id: cat.id, label: cat.label, icon: cat.icon, color: cat.color, user_id: uid })
         });
         if (!res.ok) throw new Error(`${res.status}`); return await res.json();
       },
       async deleteCategory(id) {
-        const c = this.getConfig(); if (!c) return null;
-        const res = await fetch(`${c.url}/rest/v1/categories?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key) });
+        const c = this.getConfig(); const t = this.getToken(); if (!t) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key, t) });
         if (!res.ok) throw new Error(`${res.status}`); return true;
       },
       async testConnection() {
-        const c = this.getConfig(); if (!c) return false;
-        try { const res = await fetch(`${c.url}/rest/v1/entries?select=id&limit=1`, { headers: this.headers(c.key) }); return res.ok; } catch(e) { return false; }
+        const c = this.getConfig(); const t = this.getToken(); if (!t) return false;
+        try { const res = await fetch(`${c.url}/rest/v1/entries?select=id&limit=1`, { headers: this.headers(c.key, t) }); return res.ok; } catch(e) { return false; }
       }
     };
 
@@ -285,11 +376,15 @@
       const [copyFeedback, setCopyFeedback] = useState(null);
       const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
       const [showSettings, setShowSettings] = useState(false);
-      const [supabaseUrl, setSupabaseUrl] = useState('');
-      const [supabaseKey, setSupabaseKey] = useState('');
       const [syncStatus, setSyncStatus] = useState('offline');
       const [isConfigured, setIsConfigured] = useState(false);
-      const [connectError, setConnectError] = useState('');
+      const [currentUser, setCurrentUser] = useState(null);
+      const [authLoading, setAuthLoading] = useState(true);
+      const [authMode, setAuthMode] = useState('login');
+      const [authEmail, setAuthEmail] = useState('');
+      const [authPassword, setAuthPassword] = useState('');
+      const [authError, setAuthError] = useState('');
+      const [authSubmitting, setAuthSubmitting] = useState(false);
       const [imagePreview, setImagePreview] = useState(null);
       const [imageFile, setImageFile] = useState(null);
       const [imageBase64, setImageBase64] = useState(null);
@@ -365,14 +460,22 @@
       };
 
       useEffect(() => {
-        // Auto-connect: save default config if none exists, then mark as configured
-        const config = JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null');
-        if (!config?.url || !config?.key) {
-          localStorage.setItem('commonplace_supabase_config', JSON.stringify({ url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY }));
+        // Check for existing auth session
+        const auth = supabaseAPI.getAuth();
+        if (auth?.access_token && auth?.user) {
+          setCurrentUser(auth.user);
+          setIsConfigured(true);
+          setAuthLoading(false);
+        } else {
+          // Try refreshing session
+          supabaseAPI.refreshSession().then(data => {
+            if (data?.user) {
+              setCurrentUser(data.user);
+              setIsConfigured(true);
+            }
+            setAuthLoading(false);
+          });
         }
-        setSupabaseUrl(DEFAULT_SUPABASE_URL);
-        setSupabaseKey(DEFAULT_SUPABASE_KEY);
-        setIsConfigured(true);
       }, []);
       useEffect(() => { if (isConfigured) fetchFromCloud(); }, [isConfigured]);
 
@@ -541,13 +644,37 @@
         localStorage.setItem('commonplace_cat_order', JSON.stringify(newOrder));
       };
 
-      const saveSupabaseConfig = async () => {
-        if (!supabaseUrl || !supabaseKey) return; setConnectError('');
-        localStorage.setItem('commonplace_supabase_config', JSON.stringify({ url: supabaseUrl.replace(/\/$/, ''), key: supabaseKey.trim() }));
-        const ok = await supabaseAPI.testConnection();
-        if (ok) { setIsConfigured(true); setShowSettings(false); } else { localStorage.removeItem('commonplace_supabase_config'); setConnectError('Connection failed. Check your URL and key.'); }
+      const handleAuthSubmit = async () => {
+        if (!authEmail.trim() || !authPassword.trim()) { setAuthError('Please enter email and password.'); return; }
+        if (authPassword.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
+        setAuthError(''); setAuthSubmitting(true);
+        try {
+          let data;
+          if (authMode === 'signup') {
+            data = await supabaseAPI.signup(authEmail.trim(), authPassword);
+          } else {
+            data = await supabaseAPI.login(authEmail.trim(), authPassword);
+          }
+          if (data.user) {
+            setCurrentUser(data.user);
+            setIsConfigured(true);
+            setAuthEmail(''); setAuthPassword('');
+          }
+        } catch(e) {
+          setAuthError(e.message || 'Authentication failed. Please try again.');
+        }
+        setAuthSubmitting(false);
       };
-      const disconnectSupabase = () => { localStorage.removeItem('commonplace_supabase_config'); setSupabaseUrl(''); setSupabaseKey(''); setIsConfigured(false); setSyncStatus('offline'); setShowSettings(false); setConnectError(''); };
+
+      const handleLogout = async () => {
+        await supabaseAPI.logout();
+        setCurrentUser(null);
+        setIsConfigured(false);
+        setItems([]); saveLocal([]);
+        setCustomCategories([]); saveLocalCats([]);
+        setSyncStatus('offline');
+        setShowLanding(true); setShowApp(false);
+      };
 
       useEffect(() => { const h = () => setIsMobile(window.innerWidth < 600); window.addEventListener('resize', h); return () => window.removeEventListener('resize', h); }, []);
 
@@ -655,6 +782,39 @@
         setTimeout(() => { setShowLanding(false); setShowApp(true); }, 400);
       };
 
+      if (authLoading) {
+        return (
+          <div className="auth-page">
+            <div className="landing-logo" style={{ animationDelay: '0s' }}>✦</div>
+            <div className="spinner" style={{ width: 24, height: 24, borderWidth: 3, color: '#8B7355', marginTop: 16 }} />
+          </div>
+        );
+      }
+
+      if (!currentUser) {
+        return (
+          <div className="auth-page">
+            <div className="landing-logo" style={{ animationDelay: '0s', marginBottom: 24 }}>✦</div>
+            <h1 className="landing-title" style={{ animationDelay: '0s', marginBottom: 8 }}>Commonplace</h1>
+            <div className="landing-line" style={{ animationDelay: '0s', marginBottom: 32 }} />
+            <div className="auth-card">
+              <h2>{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+              <p>{authMode === 'login' ? 'Sign in to access your notes' : 'Sign up to start your journal'}</p>
+              {authError && <div className="auth-error">{authError}</div>}
+              <input type="email" placeholder="Email address" value={authEmail} onChange={e => { setAuthEmail(e.target.value); setAuthError(''); }} className="auth-input" />
+              <input type="password" placeholder="Password" value={authPassword} onChange={e => { setAuthPassword(e.target.value); setAuthError(''); }} className="auth-input" onKeyDown={e => { if (e.key === 'Enter') handleAuthSubmit(); }} />
+              <button onClick={handleAuthSubmit} className="auth-btn" disabled={authSubmitting}>
+                {authSubmitting ? 'Please wait...' : (authMode === 'login' ? 'Sign In' : 'Create Account')}
+              </button>
+              <button className="auth-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); }}>
+                {authMode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              </button>
+            </div>
+            <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
+          </div>
+        );
+      }
+
       if (showLanding) {
         return (
           <div className={`landing-page ${landingExiting ? 'exiting' : ''}`}>
@@ -740,15 +900,18 @@
             <div style={st.modalOverlay} onClick={() => setShowSettings(false)}>
               <div style={st.modalContent} onClick={e => e.stopPropagation()}>
                 <h2 style={st.modalTitle}>⚙️ Settings</h2>
-                <p style={st.modalSubtitle}>Your notes sync automatically across all devices.</p>
+                <p style={st.modalSubtitle}>Signed in as <strong>{currentUser?.email}</strong></p>
                 <div>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: syncStatus === 'synced' ? 'rgba(107,142,107,0.15)' : syncStatus === 'error' ? 'rgba(205,92,92,0.15)' : 'rgba(184,134,11,0.15)', color: syncStatus === 'synced' ? '#6B8E6B' : syncStatus === 'error' ? '#CD5C5C' : '#B8860B', marginBottom: 20 }}>
                       {syncStatus === 'synced' ? '✓ Connected & Synced' : syncStatus === 'error' ? '⚠ Sync Error — tap Refresh' : '↻ Syncing...'}
                     </div>
-                    <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 20 }}>Notes, photos, and categories sync across all your devices automatically. No setup needed.</p>
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 20 }}>Your notes, photos, and categories sync automatically across all your devices.</p>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                       <button onClick={fetchFromCloud} className="btn-secondary" style={st.cancelButton}>↻ Refresh</button>
                       <button onClick={() => setShowSettings(false)} className="btn-primary" style={st.saveButton}>Done</button>
+                    </div>
+                    <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(139,115,85,0.1)' }}>
+                      <button onClick={() => { setShowSettings(false); handleLogout(); }} style={{ ...st.dangerButton, width: '100%' }}>Sign Out</button>
                     </div>
                 </div>
               </div>
