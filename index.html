@@ -467,14 +467,40 @@
       };
 
       useEffect(() => {
-        // Check for existing auth session
+        // Handle auth redirect (email confirmation link)
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+          try {
+            const params = new URLSearchParams(hash.substring(1));
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            if (accessToken) {
+              // Fetch user info with the token
+              const c = supabaseAPI.getConfig();
+              fetch(`${c.url}/auth/v1/user`, {
+                headers: { 'apikey': c.key, 'Authorization': `Bearer ${accessToken}` }
+              }).then(res => res.json()).then(user => {
+                if (user?.id) {
+                  supabaseAPI.saveAuth({ access_token: accessToken, refresh_token: refreshToken, user });
+                  setCurrentUser(user);
+                  setIsConfigured(true);
+                  setAuthLoading(false);
+                  // Clean up URL
+                  window.history.replaceState(null, '', window.location.pathname);
+                }
+              }).catch(() => { setAuthLoading(false); });
+              return; // Don't run normal auth check
+            }
+          } catch(e) { console.error('Auth redirect error:', e); }
+        }
+
+        // Normal auth check
         const auth = supabaseAPI.getAuth();
         if (auth?.access_token && auth?.user) {
           setCurrentUser(auth.user);
           setIsConfigured(true);
           setAuthLoading(false);
         } else {
-          // Try refreshing session
           supabaseAPI.refreshSession().then(data => {
             if (data?.user) {
               setCurrentUser(data.user);
@@ -659,13 +685,23 @@
           let data;
           if (authMode === 'signup') {
             data = await supabaseAPI.signup(authEmail.trim(), authPassword);
+            if (data.access_token && data.user) {
+              setCurrentUser(data.user);
+              setIsConfigured(true);
+            } else if (data.user && !data.access_token) {
+              // Email confirmation required
+              setAuthError('');
+              setAuthMode('check-email');
+              setAuthSubmitting(false);
+              return;
+            }
           } else {
             data = await supabaseAPI.login(authEmail.trim(), authPassword);
-          }
-          if (data.user) {
-            setCurrentUser(data.user);
-            setIsConfigured(true);
-            setAuthEmail(''); setAuthPassword('');
+            if (data.user) {
+              setCurrentUser(data.user);
+              setIsConfigured(true);
+              setAuthEmail(''); setAuthPassword('');
+            }
           }
         } catch(e) {
           setAuthError(e.message || 'Authentication failed. Please try again.');
@@ -801,6 +837,19 @@
       }
 
       if (!currentUser) {
+        if (authMode === 'check-email') {
+          return (
+            <div className="auth-page">
+              <div className="landing-logo" style={{ animationDelay: '0s', marginBottom: 24 }}>✦</div>
+              <div className="auth-card">
+                <h2>Check Your Email</h2>
+                <p style={{ marginBottom: 16 }}>We sent a confirmation link to <strong>{authEmail}</strong></p>
+                <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 24, lineHeight: 1.6 }}>Click the link in the email to activate your account, then come back here and sign in.</p>
+                <button onClick={() => { setAuthMode('login'); setAuthPassword(''); }} className="auth-btn">Back to Sign In</button>
+              </div>
+            </div>
+          );
+        }
         return (
           <div className="auth-page">
             <div className="landing-logo" style={{ animationDelay: '0s', marginBottom: 24 }}>✦</div>
