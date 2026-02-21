@@ -355,9 +355,16 @@
     const saveLocalCats = (cats) => { try { localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(cats)); } catch(e) {} };
 
     function NotesApp() {
-      const [showLanding, setShowLanding] = useState(true);
+      const [showLanding, setShowLanding] = useState(() => {
+        // Skip landing page if user is already logged in
+        const auth = JSON.parse(localStorage.getItem('commonplace_auth') || 'null');
+        return !(auth?.access_token && auth?.user);
+      });
       const [landingExiting, setLandingExiting] = useState(false);
-      const [showApp, setShowApp] = useState(false);
+      const [showApp, setShowApp] = useState(() => {
+        const auth = JSON.parse(localStorage.getItem('commonplace_auth') || 'null');
+        return !!(auth?.access_token && auth?.user);
+      });
       const [items, setItems] = useState(() => { const l = loadLocal(); return l.length > 0 ? l : [{ id: 'welcome-1', category: 'notes', title: 'Welcome to Commonplace', content: 'Your personal space for thoughts and discoveries. Now with photos and custom categories! 📸', date: new Date().toISOString().split('T')[0], starred: true, image_url: null }]; });
       const [customCategories, setCustomCategories] = useState(loadLocalCats);
       const [categoryOrder, setCategoryOrder] = useState(() => {
