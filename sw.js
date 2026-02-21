@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'commonplace-v1';
+const CACHE_VERSION = 'commonplace-v2';
 const ASSETS = [
   './',
   './index.html'
