@@ -4,7 +4,892 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#8B7355">
+  <title>Commonplace — Notes & Recommendations</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { font-size: 18px; }
+    body { font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    ::placeholder { color: #A89B8C; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes modalFade { from { opacity: 0; transform: translateY(-8px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes landingFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+    @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.4; } 50% { transform: scale(1.05); opacity: 0.6; } }
+    @keyframes logoReveal { from { opacity: 0; transform: scale(0.8) rotate(-5deg); } to { opacity: 1; transform: scale(1) rotate(0deg); } }
+    @keyframes lineGrow { from { width: 0; } to { width: 80px; } }
+    @keyframes landingExit { to { opacity: 0; transform: scale(1.02); } }
+    @keyframes appEnter { from { opacity: 0; } to { opacity: 1; } }
+
+    .landing-page {
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: linear-gradient(165deg, #FAF5EE 0%, #F0E8DC 40%, #E8DECE 70%, #F5EDE4 100%);
+      position: relative; overflow: hidden; text-align: center; padding: 40px 24px;
+    }
+    .landing-page::before {
+      content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(139,115,85,0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, rgba(107,83,68,0.05) 0%, transparent 50%);
+      animation: breathe 8s ease-in-out infinite; pointer-events: none;
+    }
+    .landing-page::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%238B7355' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none; opacity: 0.5;
+    }
+    .landing-content { position: relative; z-index: 1; }
+    .landing-logo { width: 88px; height: 88px; background: linear-gradient(145deg, #8B7355, #6B5344, #5A4636);
+      border-radius: 22px; display: flex; align-items: center; justify-content: center; color: #FDF8F3;
+      font-size: 36px; margin: 0 auto 32px; box-shadow: 0 8px 32px rgba(107,83,68,0.25), 0 2px 8px rgba(107,83,68,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+      animation: logoReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 0.2s;
+    }
+    .landing-title { font-family: 'Playfair Display', serif; font-size: clamp(36px, 8vw, 56px); font-weight: 700;
+      color: #2D2416; margin: 0 0 8px; letter-spacing: -0.5px;
+      animation: landingFadeIn 0.7s ease both; animation-delay: 0.5s;
+    }
+    .landing-line { width: 80px; height: 1px; background: linear-gradient(90deg, transparent, #8B7355, transparent);
+      margin: 16px auto; animation: lineGrow 0.6s ease both; animation-delay: 0.7s;
+    }
+    .landing-subtitle { font-family: 'Source Sans 3', sans-serif; font-size: clamp(15px, 3vw, 18px);
+      color: #8B7355; font-style: italic; font-weight: 300; margin: 0 0 48px; letter-spacing: 0.5px;
+      animation: landingFadeIn 0.7s ease both; animation-delay: 0.8s;
+    }
+    .landing-enter-btn { font-family: 'Source Sans 3', sans-serif; font-size: 16px; font-weight: 500;
+      color: #FDF8F3; background: linear-gradient(145deg, #8B7355, #7A6548); border: none; border-radius: 12px;
+      padding: 16px 48px; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+      box-shadow: 0 4px 20px rgba(139,115,85,0.3), 0 1px 3px rgba(139,115,85,0.2);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: landingFadeIn 0.7s ease both; animation-delay: 1s;
+    }
+    .landing-enter-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,115,85,0.35); background: linear-gradient(145deg, #7A6548, #6B5344); }
+    .landing-enter-btn:active { transform: translateY(0) scale(0.98); }
+    .landing-tagline { font-family: 'Source Sans 3', sans-serif; font-size: 12px; color: '#B8A898';
+      margin-top: 24px; letter-spacing: 2px; text-transform: uppercase;
+      animation: landingFadeIn 0.7s ease both; animation-delay: 1.2s;
+    }
+    .landing-page.exiting { animation: landingExit 0.4s ease forwards; }
+    .app-wrapper.entering { animation: appEnter 0.4s ease both; animation-delay: 0.2s; }
+    .card { transition: all 0.25s ease; }
+    @media (hover: hover) {
+      .card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(139,115,85,0.15); }
+      .category-tab:hover { background: rgba(139,115,85,0.08); }
+      .btn-primary:hover { background: #7A6548; transform: translateY(-1px); }
+      .btn-secondary:hover { background: rgba(139,115,85,0.1); }
+      .star-btn:hover, .share-btn:hover { transform: scale(1.15); }
+      .share-option:hover { background: rgba(139,115,85,0.1); }
+      .edit-btn:hover { background: rgba(139,115,85,0.15) !important; }
+      .delete-btn:hover { background: rgba(205,92,92,0.15) !important; }
+      .settings-btn:hover { background: rgba(139,115,85,0.1); }
+      .photo-btn:hover { background: rgba(139,115,85,0.15) !important; }
+      .add-cat-btn:hover { background: rgba(139,115,85,0.15) !important; }
+      .icon-option:hover { background: rgba(139,115,85,0.15) !important; }
+      .color-option:hover { transform: scale(1.2); }
+      .remove-cat:hover { background: rgba(205,92,92,0.15) !important; }
+    }
+    .category-tab.active { background: #8B7355 !important; color: #FDF8F3 !important; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #8B7355 !important; }
+    .btn-primary:active, .btn-secondary:active, .category-tab:active { transform: scale(0.97); }
+    .star-btn:active, .share-btn:active { transform: scale(0.9); }
+    nav::-webkit-scrollbar { display: none; }
+    .sync-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 12px; background: rgba(139,115,85,0.1); }
+    .sync-indicator.synced { color: #6B8E6B; }
+    .sync-indicator.syncing { color: #B8860B; }
+    .sync-indicator.offline { color: #A89B8C; }
+    .sync-indicator.error { color: #CD5C5C; }
+    .spinner { width: 12px; height: 12px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .card-image { width: 100%; border-radius: 6px; margin-bottom: 12px; max-height: 250px; object-fit: cover; cursor: pointer; }
+    .photo-upload-area { border: 2px dashed rgba(139,115,85,0.3); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 12px; transition: all 0.2s; }
+    .voice-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border: 2px solid rgba(139,115,85,0.2); border-radius: 8px; background: #FDF8F3; cursor: pointer; font-size: 15px; font-family: 'Source Sans 3', sans-serif; color: #8B7355; font-weight: 500; margin-bottom: 12px; transition: all 0.2s; }
+    .voice-btn:hover { background: rgba(139,115,85,0.08); border-color: #8B7355; }
+    .voice-btn.recording { background: rgba(205,92,92,0.08); border-color: #CD5C5C; color: #CD5C5C; animation: pulse 1.5s ease infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .voice-dot { width: 10px; height: 10px; border-radius: 50%; background: #CD5C5C; }
+    .photo-upload-area:hover { border-color: #8B7355; background: rgba(139,115,85,0.04); }
+    .photo-upload-area.has-image { border-style: solid; border-color: rgba(139,115,85,0.2); padding: 8px; }
+    .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; }
+    .photo-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: center; }
+    .uploading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,251,247,0.8); display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-direction: column; gap: 8px; z-index: 10; }
+    .lightbox { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .lightbox img { max-width: 95vw; max-height: 95vh; object-fit: contain; }
+    .icon-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .icon-option { width: 40px; height: 40px; border: 2px solid transparent; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; background: rgba(139,115,85,0.06); transition: all 0.15s; }
+    .icon-option.selected { border-color: #8B7355; background: rgba(139,115,85,0.15); }
+    .color-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .color-option { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; }
+    .color-option.selected { border-color: #2D2416; transform: scale(1.15); }
+    .cat-manage-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background: rgba(139,115,85,0.04); margin-bottom: 6px; }
+    .cat-manage-label { display: flex; align-items: center; gap: 8px; font-size: 14px; flex: 1; }
+    .remove-cat { background: none; border: none; color: #B85450; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 4px; }
+    .cat-reorder-btn { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 6px; color: #8B7355; border-radius: 4px; line-height: 1; }
+    .cat-reorder-btn:hover { background: rgba(139,115,85,0.1); }
+    .cat-reorder-btn:disabled { opacity: 0.25; cursor: default; }
+    .cat-reorder-btn:disabled:hover { background: none; }
+    .cat-manage-actions { display: flex; align-items: center; gap: 2px; }
+    .photo-saved-badge { display: inline-block; font-size: 11px; color: #6B8E6B; background: rgba(107,142,107,0.1); padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const supabaseAPI = {
+      getConfig() { return JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null'); },
+      headers(apiKey) { return { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' }; },
+      async fetchEntries() {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/entries?select=*&order=created_at.desc`, { headers: this.headers(c.key) });
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
+      },
+      async upsertEntry(entry) {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/entries`, {
+          method: 'POST', headers: { ...this.headers(c.key), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({ id: entry.id, category: entry.category, title: entry.title, content: entry.content, date: entry.date, starred: entry.starred, image_url: entry.image_url || null, updated_at: new Date().toISOString() })
+        });
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
+      },
+      async deleteEntry(id) {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/entries?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key) });
+        if (!res.ok) throw new Error(`${res.status}`); return true;
+      },
+      async uploadImage(file) {
+        const c = this.getConfig(); if (!c) throw new Error('Not configured');
+        const ext = (file.name || 'photo.jpg').split('.').pop() || 'jpg';
+        const contentType = file.type || 'image/jpeg';
+        const filename = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+        console.log('Uploading image:', filename, 'size:', file.size, 'type:', contentType);
+        const res = await fetch(`${c.url}/storage/v1/object/images/${filename}`, {
+          method: 'POST',
+          headers: { 'apikey': c.key, 'Authorization': `Bearer ${c.key}`, 'Content-Type': contentType, 'x-upsert': 'true' },
+          body: file
+        });
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          console.error('Storage upload failed:', res.status, errText);
+          throw new Error(`Upload failed: ${res.status} ${errText}`);
+        }
+        const publicUrl = `${c.url}/storage/v1/object/public/images/${filename}`;
+        console.log('Upload success:', publicUrl);
+        return publicUrl;
+      },
+      async fetchCategories() {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories?select=*&order=created_at.asc`, { headers: this.headers(c.key) });
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
+      },
+      async upsertCategory(cat) {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories`, {
+          method: 'POST', headers: { ...this.headers(c.key), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({ id: cat.id, label: cat.label, icon: cat.icon, color: cat.color })
+        });
+        if (!res.ok) throw new Error(`${res.status}`); return await res.json();
+      },
+      async deleteCategory(id) {
+        const c = this.getConfig(); if (!c) return null;
+        const res = await fetch(`${c.url}/rest/v1/categories?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: this.headers(c.key) });
+        if (!res.ok) throw new Error(`${res.status}`); return true;
+      },
+      async testConnection() {
+        const c = this.getConfig(); if (!c) return false;
+        try { const res = await fetch(`${c.url}/rest/v1/entries?select=id&limit=1`, { headers: this.headers(c.key) }); return res.ok; } catch(e) { return false; }
+      }
+    };
+
+    const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+      return new Promise((resolve) => {
+        if (file.size < 300000) { resolve(file); return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              let w = img.width, h = img.height;
+              if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  const fname = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg';
+                  resolve(new File([blob], fname, { type: 'image/jpeg' }));
+                } else { resolve(file); }
+              }, 'image/jpeg', quality);
+            } catch(err) { console.error('Compress error:', err); resolve(file); }
+          };
+          img.onerror = () => resolve(file);
+          img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(file);
+        reader.readAsDataURL(file);
+      });
+    };
+
+    const defaultCategories = [
+      { id: 'notes', label: 'Notes', icon: '✎', color: '#8B7355' },
+      { id: 'books', label: 'Books', icon: '◎', color: '#6B8E6B' },
+      { id: 'movies', label: 'Movies', icon: '▶', color: '#B8860B' },
+      { id: 'restaurants', label: 'Restaurants', icon: '◈', color: '#CD5C5C' },
+      { id: 'misc', label: 'Misc', icon: '✦', color: '#708090' },
+    ];
+
+    const iconOptions = ['📝', '💼', '🏠', '🎵', '🎨', '🏃', '🍕', '✈️', '💡', '🎯', '📚', '🎬', '🍽️', '🛒', '💰', '❤️', '🔧', '🌿', '📱', '🎮', '🐾', '⭐', '🔬', '🎓', '✎', '◎', '▶', '◈', '✦', '◆', '●', '■'];
+    const colorOptions = ['#8B7355', '#6B8E6B', '#B8860B', '#CD5C5C', '#708090', '#9370DB', '#20B2AA', '#FF8C00', '#DC143C', '#4682B4', '#2E8B57', '#D2691E', '#6A5ACD', '#DB7093', '#008B8B'];
+
+    const STORAGE_KEY = 'commonplace_items';
+    const CAT_STORAGE_KEY = 'commonplace_custom_categories';
+    const loadLocal = () => { try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : []; } catch(e) { return []; } };
+    const saveLocal = (items) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch(e) {} };
+    const loadLocalCats = () => { try { const s = localStorage.getItem(CAT_STORAGE_KEY); return s ? JSON.parse(s) : []; } catch(e) { return []; } };
+    const saveLocalCats = (cats) => { try { localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(cats)); } catch(e) {} };
+
+    function NotesApp() {
+      const [showLanding, setShowLanding] = useState(true);
+      const [landingExiting, setLandingExiting] = useState(false);
+      const [showApp, setShowApp] = useState(false);
+      const [items, setItems] = useState(() => { const l = loadLocal(); return l.length > 0 ? l : [{ id: 'welcome-1', category: 'notes', title: 'Welcome to Commonplace', content: 'Your personal space for thoughts and discoveries. Now with photos and custom categories! 📸', date: new Date().toISOString().split('T')[0], starred: true, image_url: null }]; });
+      const [customCategories, setCustomCategories] = useState(loadLocalCats);
+      const [categoryOrder, setCategoryOrder] = useState(() => {
+        try {
+          const s = localStorage.getItem('commonplace_cat_order');
+          if (s) return JSON.parse(s);
+        } catch(e) {}
+        return null;
+      });
+      const [activeCategory, setActiveCategory] = useState('all');
+      const [isAdding, setIsAdding] = useState(false);
+      const [editingId, setEditingId] = useState(null);
+      const [newItem, setNewItem] = useState({ category: 'notes', title: '', content: '' });
+      const [searchQuery, setSearchQuery] = useState('');
+      const [shareModalId, setShareModalId] = useState(null);
+      const [copyFeedback, setCopyFeedback] = useState(null);
+      const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+      const [showSettings, setShowSettings] = useState(false);
+      const [supabaseUrl, setSupabaseUrl] = useState('');
+      const [supabaseKey, setSupabaseKey] = useState('');
+      const [syncStatus, setSyncStatus] = useState('offline');
+      const [isConfigured, setIsConfigured] = useState(false);
+      const [connectError, setConnectError] = useState('');
+      const [imagePreview, setImagePreview] = useState(null);
+      const [imageFile, setImageFile] = useState(null);
+      const [imageBase64, setImageBase64] = useState(null);
+      const [uploading, setUploading] = useState(false);
+      const [lightboxUrl, setLightboxUrl] = useState(null);
+      const [isRecording, setIsRecording] = useState(false);
+      const [voiceSupported, setVoiceSupported] = useState(false);
+      const recognitionRef = useRef(null);
+      const [showAddCategory, setShowAddCategory] = useState(false);
+      const [showManageCategories, setShowManageCategories] = useState(false);
+      const [newCatName, setNewCatName] = useState('');
+      const [newCatIcon, setNewCatIcon] = useState('📝');
+      const [newCatColor, setNewCatColor] = useState('#8B7355');
+      const fileInputRef = useRef(null);
+
+      const buildAllCategories = () => {
+        const allCats = [...defaultCategories, ...customCategories];
+        if (!categoryOrder) return allCats;
+        const ordered = [];
+        for (const id of categoryOrder) {
+          const cat = allCats.find(c => c.id === id);
+          if (cat) ordered.push(cat);
+        }
+        for (const cat of allCats) {
+          if (!ordered.find(c => c.id === cat.id)) ordered.push(cat);
+        }
+        return ordered;
+      };
+      const allCategories = buildAllCategories();
+
+      useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          setVoiceSupported(true);
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+          let finalTranscript = '';
+          recognition.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const t = event.results[i][0].transcript;
+              if (event.results[i].isFinal) { finalTranscript += t + ' '; } else { interim = t; }
+            }
+            setNewItem(prev => ({ ...prev, content: (finalTranscript + interim).trim() }));
+          };
+          recognition.onerror = (e) => { console.error('Speech error:', e.error); setIsRecording(false); };
+          recognition.onend = () => { setIsRecording(false); };
+          recognitionRef.current = recognition;
+        }
+      }, []);
+
+      const toggleVoice = () => {
+        if (!recognitionRef.current) return;
+        if (isRecording) {
+          recognitionRef.current.stop();
+          setIsRecording(false);
+        } else {
+          const currentContent = newItem.content;
+          let finalTranscript = currentContent ? currentContent + ' ' : '';
+          recognitionRef.current.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const t = event.results[i][0].transcript;
+              if (event.results[i].isFinal) { finalTranscript += t + ' '; } else { interim = t; }
+            }
+            setNewItem(prev => ({ ...prev, content: (finalTranscript + interim).trim() }));
+          };
+          recognitionRef.current.start();
+          setIsRecording(true);
+        }
+      };
+
+      useEffect(() => {
+        const config = JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null');
+        if (config?.url && config?.key) { setSupabaseUrl(config.url); setSupabaseKey(config.key); setIsConfigured(true); }
+      }, []);
+      useEffect(() => { if (isConfigured) fetchFromCloud(); }, [isConfigured]);
+
+      const fetchFromCloud = async () => {
+        setSyncStatus('syncing');
+        try {
+          const [entries, cats] = await Promise.all([supabaseAPI.fetchEntries(), supabaseAPI.fetchCategories()]);
+          if (entries && entries.length > 0) {
+            const formatted = entries.map(item => ({ id: item.id, category: item.category, title: item.title, content: item.content, date: item.date, starred: item.starred, image_url: item.image_url || null }));
+            setItems(formatted); saveLocal(formatted);
+          }
+          if (cats && cats.length > 0) {
+            const formatted = cats.map(c => ({ id: c.id, label: c.label, icon: c.icon, color: c.color }));
+            setCustomCategories(formatted); saveLocalCats(formatted);
+          }
+          setSyncStatus('synced');
+        } catch (e) { console.error('Fetch error:', e); setSyncStatus('error'); }
+      };
+
+      const handleImageSelect = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        console.log('Image selected:', file.name, file.size, file.type);
+        try {
+          const compressed = await compressImage(file);
+          console.log('Compressed:', compressed.name, compressed.size, compressed.type);
+          setImageFile(compressed);
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const base64 = ev.target.result;
+            setImagePreview(base64);
+            setImageBase64(base64);
+          };
+          reader.readAsDataURL(compressed);
+        } catch(err) {
+          console.error('Image select error:', err);
+          // Fallback: read original file
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const base64 = ev.target.result;
+            setImagePreview(base64);
+            setImageBase64(base64);
+            setImageFile(file);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const removeImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        setImageBase64(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+
+      const handleAdd = async () => {
+        if (!newItem.title.trim()) return;
+        if (isRecording && recognitionRef.current) { recognitionRef.current.stop(); setIsRecording(false); }
+
+        let imageUrl = null;
+
+        // Try uploading to Supabase Storage first
+        if (imageFile && isConfigured) {
+          setUploading(true);
+          try {
+            imageUrl = await supabaseAPI.uploadImage(imageFile);
+            console.log('Photo uploaded to Supabase:', imageUrl);
+          } catch(e) {
+            console.error('Upload failed, using base64 fallback:', e);
+            // Fallback: store the base64 data directly
+            imageUrl = imageBase64 || imagePreview;
+          }
+          setUploading(false);
+        } else if (imageFile || imageBase64) {
+          // Not connected to Supabase — store base64 locally
+          imageUrl = imageBase64 || imagePreview;
+          console.log('No Supabase, storing base64 locally');
+        }
+
+        const item = { id: `item-${Date.now()}`, ...newItem, date: new Date().toISOString().split('T')[0], starred: false, image_url: imageUrl };
+        const newItems = [item, ...items]; setItems(newItems); saveLocal(newItems);
+        setNewItem({ category: 'notes', title: '', content: '' }); setIsAdding(false); removeImage();
+        if (isConfigured) { setSyncStatus('syncing'); try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
+      };
+
+      const handleDelete = async (id) => {
+        if (!window.confirm('Delete this entry?')) return;
+        const newItems = items.filter(i => i.id !== id); setItems(newItems); saveLocal(newItems);
+        if (isConfigured) { setSyncStatus('syncing'); try { await supabaseAPI.deleteEntry(id); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
+      };
+
+      const toggleStar = async (id) => {
+        const updated = items.map(i => i.id === id ? { ...i, starred: !i.starred } : i); setItems(updated); saveLocal(updated);
+        const item = updated.find(i => i.id === id);
+        if (isConfigured && item) { setSyncStatus('syncing'); try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
+      };
+
+      const handleEdit = (item) => {
+        setEditingId(item.id); setNewItem({ category: item.category, title: item.title, content: item.content });
+        if (item.image_url) { setImagePreview(item.image_url); setImageBase64(item.image_url); }
+        else removeImage();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const handleSaveEdit = async () => {
+        if (isRecording && recognitionRef.current) { recognitionRef.current.stop(); setIsRecording(false); }
+        let imageUrl = items.find(i => i.id === editingId)?.image_url || null;
+
+        if (imageFile) {
+          if (isConfigured) {
+            setUploading(true);
+            try {
+              imageUrl = await supabaseAPI.uploadImage(imageFile);
+            } catch(e) {
+              console.error('Edit upload failed, using base64 fallback:', e);
+              imageUrl = imageBase64 || imagePreview;
+            }
+            setUploading(false);
+          } else {
+            imageUrl = imageBase64 || imagePreview;
+          }
+        } else if (!imagePreview) {
+          imageUrl = null;
+        }
+
+        const updated = items.map(i => i.id === editingId ? { ...i, ...newItem, image_url: imageUrl } : i); setItems(updated); saveLocal(updated);
+        const item = updated.find(i => i.id === editingId);
+        setEditingId(null); setNewItem({ category: 'notes', title: '', content: '' }); removeImage();
+        if (isConfigured && item) { setSyncStatus('syncing'); try { await supabaseAPI.upsertEntry(item); setSyncStatus('synced'); } catch(e) { setSyncStatus('error'); } }
+      };
+
+      const handleAddCategory = async () => {
+        if (!newCatName.trim()) return;
+        const id = newCatName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        if (allCategories.find(c => c.id === id)) { alert('A category with this name already exists.'); return; }
+        const newCat = { id, label: newCatName.trim(), icon: newCatIcon, color: newCatColor };
+        const updated = [...customCategories, newCat]; setCustomCategories(updated); saveLocalCats(updated);
+        const newOrder = [...allCategories.map(c => c.id), newCat.id];
+        setCategoryOrder(newOrder);
+        localStorage.setItem('commonplace_cat_order', JSON.stringify(newOrder));
+        setNewCatName(''); setNewCatIcon('📝'); setNewCatColor('#8B7355'); setShowAddCategory(false);
+        if (isConfigured) { try { await supabaseAPI.upsertCategory(newCat); } catch(e) { console.error('Category sync error:', e); } }
+      };
+
+      const handleDeleteCategory = async (catId) => {
+        const entriesInCat = items.filter(i => i.category === catId);
+        if (entriesInCat.length > 0) { if (!window.confirm(`This category has ${entriesInCat.length} entries. They will be moved to "Notes". Continue?`)) return;
+          const movedItems = items.map(i => i.category === catId ? { ...i, category: 'notes' } : i); setItems(movedItems); saveLocal(movedItems);
+          if (isConfigured) { for (const item of movedItems.filter(i => entriesInCat.some(e => e.id === i.id))) { try { await supabaseAPI.upsertEntry(item); } catch(e) {} } }
+        }
+        const updated = customCategories.filter(c => c.id !== catId); setCustomCategories(updated); saveLocalCats(updated);
+        const newOrder = (categoryOrder || allCategories.map(c => c.id)).filter(id => id !== catId);
+        setCategoryOrder(newOrder);
+        localStorage.setItem('commonplace_cat_order', JSON.stringify(newOrder));
+        if (activeCategory === catId) setActiveCategory('all');
+        if (isConfigured) { try { await supabaseAPI.deleteCategory(catId); } catch(e) {} }
+      };
+
+      const moveCategoryInList = (index, direction) => {
+        const newList = [...allCategories];
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= newList.length) return;
+        [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
+        const newOrder = newList.map(c => c.id);
+        setCategoryOrder(newOrder);
+        localStorage.setItem('commonplace_cat_order', JSON.stringify(newOrder));
+      };
+
+      const saveSupabaseConfig = async () => {
+        if (!supabaseUrl || !supabaseKey) return; setConnectError('');
+        localStorage.setItem('commonplace_supabase_config', JSON.stringify({ url: supabaseUrl.replace(/\/$/, ''), key: supabaseKey.trim() }));
+        const ok = await supabaseAPI.testConnection();
+        if (ok) { setIsConfigured(true); setShowSettings(false); } else { localStorage.removeItem('commonplace_supabase_config'); setConnectError('Connection failed. Check your URL and key.'); }
+      };
+      const disconnectSupabase = () => { localStorage.removeItem('commonplace_supabase_config'); setSupabaseUrl(''); setSupabaseKey(''); setIsConfigured(false); setSyncStatus('offline'); setShowSettings(false); setConnectError(''); };
+
+      useEffect(() => { const h = () => setIsMobile(window.innerWidth < 600); window.addEventListener('resize', h); return () => window.removeEventListener('resize', h); }, []);
+
+      const filteredItems = items.filter(item => {
+        const mc = activeCategory === 'all' || item.category === activeCategory;
+        const ms = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || item.content.toLowerCase().includes(searchQuery.toLowerCase());
+        return mc && ms;
+      });
+
+      const getCategoryInfo = (cid) => allCategories.find(c => c.id === cid) || { id: cid, label: cid, icon: '◇', color: '#708090' };
+      const formatShareText = (item) => { const ci = getCategoryInfo(item.category); return `${ci.icon} ${ci.label.toUpperCase()}\n\n${item.title}\n\n${item.content}\n\n— Shared from Commonplace`; };
+      const handleCopyText = async (item) => { const text = formatShareText(item); try { await navigator.clipboard.writeText(text); } catch(e) { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); } setCopyFeedback(item.id); setTimeout(() => setCopyFeedback(null), 2000); };
+      const handleNativeShare = async (item) => { const ci = getCategoryInfo(item.category); if (navigator.share) { try { await navigator.share({ title: item.title, text: `${ci.icon} ${item.title}\n\n${item.content}` }); setShareModalId(null); } catch(e) {} } };
+      const handleShareEmail = (item) => { const ci = getCategoryInfo(item.category); window.location.href = `mailto:?subject=${encodeURIComponent(ci.icon+' '+item.title)}&body=${encodeURIComponent(formatShareText(item))}`; setShareModalId(null); };
+      const handleShareSMS = (item) => { const text = formatShareText(item); window.location.href = `sms:?&body=${encodeURIComponent(text)}`; setShareModalId(null); };
+      const handleShareTwitter = (item) => { window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(item.title+'\n\n"'+item.content.slice(0,180)+(item.content.length>180?'...':'')+'"')}`, '_blank'); setShareModalId(null); };
+      const handleShareWhatsApp = (item) => { const text = formatShareText(item); window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); setShareModalId(null); };
+
+      const handleShareToContact = async (item, type) => {
+        if ('contacts' in navigator && 'ContactsManager' in window) {
+          try {
+            const props = type === 'sms' ? ['name', 'tel'] : ['name', 'email'];
+            const contacts = await navigator.contacts.select(props, { multiple: false });
+            if (contacts && contacts.length > 0) {
+              const contact = contacts[0];
+              const text = formatShareText(item);
+              if (type === 'sms' && contact.tel?.[0]) {
+                window.location.href = `sms:${contact.tel[0]}?&body=${encodeURIComponent(text)}`;
+              } else if (type === 'email' && contact.email?.[0]) {
+                const ci = getCategoryInfo(item.category);
+                window.location.href = `mailto:${contact.email[0]}?subject=${encodeURIComponent(ci.icon+' '+item.title)}&body=${encodeURIComponent(text)}`;
+              }
+            }
+          } catch(e) {
+            if (type === 'sms') handleShareSMS(item);
+            else handleShareEmail(item);
+          }
+        } else {
+          if (type === 'sms') handleShareSMS(item);
+          else handleShareEmail(item);
+        }
+        setShareModalId(null);
+      };
+
+      const st = {
+        container: { minHeight: '100vh', background: 'linear-gradient(180deg, #FDF8F3 0%, #F5EDE4 100%)', fontFamily: '"Source Sans 3", -apple-system, sans-serif', color: '#3D3428', paddingBottom: 'env(safe-area-inset-bottom)' },
+        header: { background: 'linear-gradient(180deg, #FFFBF7 0%, #FDF8F3 100%)', borderBottom: '1px solid rgba(139,115,85,0.15)', padding: isMobile ? '16px' : '24px 32px', position: 'sticky', top: 0, zIndex: 50 },
+        headerContent: { maxWidth: 1200, margin: '0 auto' },
+        headerTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? 12 : 16 },
+        logoSection: { display: 'flex', alignItems: 'center', gap: 12 },
+        logoMark: { width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, background: 'linear-gradient(135deg, #8B7355, #6B5344)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FDF8F3', fontSize: isMobile ? 16 : 20, flexShrink: 0, cursor: 'pointer', transition: 'transform 0.2s' },
+        title: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 26 : 32, fontWeight: 600, margin: 0, color: '#2D2416' },
+        subtitle: { margin: 0, fontSize: isMobile ? 14 : 16, color: '#8B7355', fontStyle: 'italic' },
+        headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
+        settingsBtn: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: 8, borderRadius: 8, color: '#8B7355', lineHeight: 1 },
+        searchInput: { width: '100%', padding: '14px 18px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, background: '#FFFBF7', fontFamily: '"Source Sans 3", sans-serif' },
+        nav: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '12px 16px' : '16px 32px', display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', alignItems: 'center' },
+        categoryTab: { padding: isMobile ? '10px 16px' : '12px 20px', border: 'none', borderRadius: 20, background: 'transparent', cursor: 'pointer', fontSize: isMobile ? 15 : 16, fontWeight: 500, color: '#5D5145', fontFamily: '"Source Sans 3", sans-serif', whiteSpace: 'nowrap', flexShrink: 0 },
+        addCatBtn: { padding: '8px 12px', border: '1px dashed rgba(139,115,85,0.4)', borderRadius: 20, background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#8B7355', fontFamily: '"Source Sans 3", sans-serif', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 },
+        main: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0 16px 32px' : '0 32px 48px' },
+        addButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: isMobile ? '16px 22px' : '16px 28px', background: '#8B7355', color: '#FDF8F3', border: 'none', borderRadius: 8, fontSize: 17, fontWeight: 500, cursor: 'pointer', marginBottom: 20, fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
+        formCard: { background: '#FFFBF7', borderRadius: 12, padding: isMobile ? 20 : 28, marginBottom: 24, boxShadow: '0 4px 24px rgba(139,115,85,0.1)', animation: 'slideDown 0.3s ease', position: 'relative' },
+        formTitle: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 20 : 24, fontWeight: 600, margin: '0 0 16px', color: '#2D2416' },
+        select: { width: '100%', padding: '14px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif' },
+        input: { width: '100%', padding: '14px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif' },
+        textarea: { width: '100%', padding: '14px 16px', border: '1px solid rgba(139,115,85,0.2)', borderRadius: 8, fontSize: 18, marginBottom: 12, background: '#FDF8F3', fontFamily: '"Source Sans 3", sans-serif', resize: 'vertical', minHeight: 100, lineHeight: 1.6 },
+        formActions: { display: 'flex', gap: 12, justifyContent: 'flex-end', flexDirection: isMobile ? 'column-reverse' : 'row' },
+        cancelButton: { padding: '14px 22px', border: '1px solid rgba(139,115,85,0.3)', borderRadius: 6, background: 'transparent', cursor: 'pointer', fontSize: 16, fontWeight: 500, color: '#5D5145', fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
+        saveButton: { padding: '14px 28px', border: 'none', borderRadius: 6, background: '#8B7355', color: '#FDF8F3', cursor: 'pointer', fontSize: 16, fontWeight: 500, fontFamily: '"Source Sans 3", sans-serif', width: isMobile ? '100%' : 'auto' },
+        grid: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? 16 : 20 },
+        card: { background: '#FFFBF7', borderRadius: 10, padding: isMobile ? 18 : 22, boxShadow: '0 2px 16px rgba(139,115,85,0.08)', animation: 'fadeIn 0.4s ease forwards', opacity: 0, overflow: 'hidden' },
+        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+        cardHeaderActions: { display: 'flex', alignItems: 'center', gap: 2 },
+        shareContainer: { position: 'relative' },
+        shareButton: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: '6px 8px', borderRadius: 4, color: '#8B7355' },
+        shareModal: { position: 'absolute', top: '100%', right: 0, marginTop: 8, background: '#FFFBF7', borderRadius: 12, boxShadow: '0 8px 32px rgba(45,36,22,0.2)', border: '1px solid rgba(139,115,85,0.15)', minWidth: isMobile ? 220 : 240, zIndex: 100, animation: 'modalFade 0.2s ease', overflow: 'hidden' },
+        shareModalHeader: { padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#8B7355', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid rgba(139,115,85,0.1)' },
+        shareOption: { display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, color: '#3D3428', textAlign: 'left', fontFamily: '"Source Sans 3", sans-serif' },
+        shareIcon: { fontSize: 20, width: 24, textAlign: 'center' },
+        shareDivider: { height: 1, background: 'rgba(139,115,85,0.1)', margin: '0' },
+        categoryBadge: { fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' },
+        starButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: '4px 6px' },
+        cardTitle: { fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 19 : 22, fontWeight: 600, margin: '0 0 8px', color: '#2D2416', lineHeight: 1.3, wordBreak: 'break-word' },
+        cardContent: { fontSize: 16, lineHeight: 1.65, color: '#5D5145', margin: '0 0 14px', wordBreak: 'break-word', overflowWrap: 'anywhere' },
+        cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid rgba(139,115,85,0.1)', flexWrap: 'wrap', gap: 8 },
+        date: { fontSize: 14, color: '#A89B8C', fontStyle: 'italic' },
+        cardActions: { display: 'flex', gap: 8 },
+        editButton: { padding: '8px 14px', border: 'none', borderRadius: 4, background: 'rgba(139,115,85,0.08)', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#6B5A48', fontFamily: '"Source Sans 3", sans-serif' },
+        deleteButton: { padding: '8px 14px', border: 'none', borderRadius: 4, background: 'rgba(205,92,92,0.08)', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#B85450', fontFamily: '"Source Sans 3", sans-serif' },
+        footer: { textAlign: 'center', padding: '20px', color: '#A89B8C', fontSize: 14, borderTop: '1px solid rgba(139,115,85,0.1)', letterSpacing: '1px' },
+        modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(45,36,22,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
+        modalContent: { background: '#FFFBF7', borderRadius: 16, padding: isMobile ? 24 : 32, maxWidth: 480, width: '100%', maxHeight: '90vh', overflow: 'auto', animation: 'modalFade 0.2s ease' },
+        modalTitle: { fontFamily: '"Playfair Display", serif', fontSize: 26, fontWeight: 600, margin: '0 0 8px', color: '#2D2416' },
+        modalSubtitle: { fontSize: 16, color: '#8B7355', margin: '0 0 24px', lineHeight: 1.5 },
+        inputLabel: { display: 'block', fontSize: 15, fontWeight: 600, color: '#5D5145', marginBottom: 6 },
+        helpText: { fontSize: 14, color: '#A89B8C', margin: '4px 0 16px' },
+        dangerButton: { padding: '12px 18px', border: 'none', borderRadius: 6, background: 'rgba(205,92,92,0.1)', color: '#B85450', cursor: 'pointer', fontSize: 16, fontWeight: 500, fontFamily: '"Source Sans 3", sans-serif' },
+        errorText: { color: '#CD5C5C', fontSize: 15, margin: '8px 0 16px', padding: '8px 12px', background: 'rgba(205,92,92,0.08)', borderRadius: 6 },
+      };
+
+      const syncDisp = syncStatus === 'synced' ? { text: '✓ Synced', cls: 'synced' } : syncStatus === 'syncing' ? { text: 'Syncing', cls: 'syncing', spin: true } : syncStatus === 'error' ? { text: '⚠ Error', cls: 'error' } : { text: 'Local only', cls: 'offline' };
+
+      const handleEnterApp = () => {
+        setLandingExiting(true);
+        setTimeout(() => { setShowLanding(false); setShowApp(true); }, 400);
+      };
+
+      if (showLanding) {
+        return (
+          <div className={`landing-page ${landingExiting ? 'exiting' : ''}`}>
+            <div className="landing-content">
+              <div className="landing-logo">✦</div>
+              <h1 className="landing-title">Commonplace</h1>
+              <div className="landing-line" />
+              <p className="landing-subtitle">A space for thoughts & discoveries</p>
+              <button className="landing-enter-btn" onClick={handleEnterApp}>Open Journal</button>
+              <p className="landing-tagline">Notes · Photos · Ideas</p>
+              <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div style={st.container} className={showApp ? 'app-wrapper entering' : ''} onClick={() => shareModalId && setShareModalId(null)}>
+          {lightboxUrl && <div className="lightbox" onClick={() => setLightboxUrl(null)}><img src={lightboxUrl} alt="Full size" /></div>}
+
+          {showAddCategory && (
+            <div style={st.modalOverlay} onClick={() => setShowAddCategory(false)}>
+              <div style={st.modalContent} onClick={e => e.stopPropagation()}>
+                <h2 style={st.modalTitle}>New Category</h2>
+                <p style={st.modalSubtitle}>Create a custom category for your entries.</p>
+                <label style={st.inputLabel}>Category Name</label>
+                <input type="text" placeholder="e.g. Work Notes, Recipes, Travel..." value={newCatName} onChange={e => setNewCatName(e.target.value)} style={st.input} />
+                <label style={st.inputLabel}>Choose an Icon</label>
+                <div className="icon-grid">
+                  {iconOptions.map(icon => (
+                    <div key={icon} className={`icon-option ${newCatIcon === icon ? 'selected' : ''}`} onClick={() => setNewCatIcon(icon)}>{icon}</div>
+                  ))}
+                </div>
+                <label style={st.inputLabel}>Choose a Color</label>
+                <div className="color-grid">
+                  {colorOptions.map(color => (
+                    <div key={color} className={`color-option ${newCatColor === color ? 'selected' : ''}`} style={{ background: color }} onClick={() => setNewCatColor(color)} />
+                  ))}
+                </div>
+                <div style={{ padding: '12px 16px', background: 'rgba(139,115,85,0.06)', borderRadius: 8, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{newCatIcon}</span>
+                  <span style={{ fontWeight: 600, color: newCatColor }}>{newCatName || 'Preview'}</span>
+                </div>
+                <div style={st.formActions}>
+                  <button onClick={() => setShowAddCategory(false)} className="btn-secondary" style={st.cancelButton}>Cancel</button>
+                  <button onClick={handleAddCategory} className="btn-primary" style={st.saveButton}>Create Category</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showManageCategories && (
+            <div style={st.modalOverlay} onClick={() => setShowManageCategories(false)}>
+              <div style={st.modalContent} onClick={e => e.stopPropagation()}>
+                <h2 style={st.modalTitle}>Manage Categories</h2>
+                <p style={st.modalSubtitle}>Use arrows to reorder. Custom categories can be deleted.</p>
+                {allCategories.map((cat, idx) => {
+                  const isCustom = customCategories.some(c => c.id === cat.id);
+                  return (
+                    <div key={cat.id} className="cat-manage-item">
+                      <div className="cat-manage-label">
+                        <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                        <span style={{ color: cat.color, fontWeight: 500 }}>{cat.label}</span>
+                        {!isCustom && <span style={{ fontSize: 11, color: '#A89B8C', marginLeft: 4 }}></span>}
+                      </div>
+                      <div className="cat-manage-actions">
+                        <button className="cat-reorder-btn" disabled={idx === 0} onClick={() => moveCategoryInList(idx, -1)} title="Move up">↑</button>
+                        <button className="cat-reorder-btn" disabled={idx === allCategories.length - 1} onClick={() => moveCategoryInList(idx, 1)} title="Move down">↓</button>
+                        {isCustom && <button className="remove-cat" onClick={() => handleDeleteCategory(cat.id)} title="Delete category">✕</button>}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ marginTop: 20, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowManageCategories(false)} className="btn-secondary" style={st.cancelButton}>Done</button>
+                  <button onClick={() => { setShowManageCategories(false); setShowAddCategory(true); }} className="btn-primary" style={st.saveButton}>+ Add New</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showSettings && (
+            <div style={st.modalOverlay} onClick={() => setShowSettings(false)}>
+              <div style={st.modalContent} onClick={e => e.stopPropagation()}>
+                <h2 style={st.modalTitle}>⚙️ Settings</h2>
+                <p style={st.modalSubtitle}>Connect to Supabase to sync everything across devices.</p>
+                {isConfigured ? (
+                  <div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: syncStatus === 'synced' ? 'rgba(107,142,107,0.15)' : syncStatus === 'error' ? 'rgba(205,92,92,0.15)' : 'rgba(184,134,11,0.15)', color: syncStatus === 'synced' ? '#6B8E6B' : syncStatus === 'error' ? '#CD5C5C' : '#B8860B', marginBottom: 20 }}>
+                      {syncStatus === 'synced' ? '✓ Connected & Synced' : syncStatus === 'error' ? '⚠ Error' : '↻ Syncing...'}
+                    </div>
+                    <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 20 }}>Your notes, photos, and categories are syncing.</p>
+                    <button onClick={fetchFromCloud} className="btn-secondary" style={{ ...st.cancelButton, marginRight: 12, marginBottom: 12 }}>↻ Refresh</button>
+                    <button onClick={disconnectSupabase} style={st.dangerButton}>Disconnect</button>
+                  </div>
+                ) : (
+                  <div>
+                    <label style={st.inputLabel}>Supabase Project URL</label>
+                    <input type="text" placeholder="https://xxxxx.supabase.co" value={supabaseUrl} onChange={e => setSupabaseUrl(e.target.value)} style={st.input} />
+                    <label style={st.inputLabel}>Supabase API Key</label>
+                    <input type="text" placeholder="eyJ..." value={supabaseKey} onChange={e => setSupabaseKey(e.target.value)} style={st.input} />
+                    <p style={st.helpText}>Use Legacy anon key from Settings → API Keys</p>
+                    {connectError && <div style={st.errorText}>⚠ {connectError}</div>}
+                    <div style={{ ...st.formActions, marginTop: 24 }}>
+                      <button onClick={() => { setShowSettings(false); setConnectError(''); }} className="btn-secondary" style={st.cancelButton}>Cancel</button>
+                      <button onClick={saveSupabaseConfig} className="btn-primary" style={st.saveButton}>Connect</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <header style={st.header}>
+            <div style={st.headerContent}>
+              <div style={st.headerTop}>
+                <div style={st.logoSection}>
+                  <div style={st.logoMark} onClick={() => { setShowApp(false); setShowLanding(true); setLandingExiting(false); }} title="Home" role="button">✦</div>
+                  <div><h1 style={st.title}>Commonplace</h1><p style={st.subtitle}>Thoughts & discoveries</p></div>
+                </div>
+                <div style={st.headerRight}>
+                  <div className={`sync-indicator ${syncDisp.cls}`}>{syncDisp.spin && <div className="spinner" />}{syncDisp.text}</div>
+                  <button className="settings-btn" onClick={() => setShowSettings(true)} style={st.settingsBtn}>⚙️</button>
+                </div>
+              </div>
+              <input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={st.searchInput} />
+            </div>
+          </header>
+
+          <nav style={st.nav}>
+            <button className={`category-tab ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')} style={st.categoryTab}>All</button>
+            {allCategories.map(cat => (
+              <button key={cat.id} className={`category-tab ${activeCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveCategory(cat.id)} style={st.categoryTab}>
+                <span style={{ marginRight: 5 }}>{cat.icon}</span>{cat.label}
+              </button>
+            ))}
+            <button className="add-cat-btn" onClick={() => setShowAddCategory(true)} style={st.addCatBtn} title="Add category">+ New</button>
+            <button className="add-cat-btn" onClick={() => setShowManageCategories(true)} style={{ ...st.addCatBtn, borderStyle: 'solid', fontSize: 12 }} title="Manage categories">⋯</button>
+          </nav>
+
+          <main style={st.main}>
+            {!isAdding && !editingId && <button className="btn-primary" onClick={() => setIsAdding(true)} style={st.addButton}>+ Add New Entry</button>}
+
+            {(isAdding || editingId) && (
+              <div style={st.formCard}>
+                {uploading && <div className="uploading-overlay"><div className="spinner" style={{ width: 24, height: 24, borderWidth: 3, color: '#8B7355' }} /><span style={{ fontSize: 14, color: '#8B7355' }}>Uploading photo...</span></div>}
+                <h3 style={st.formTitle}>{editingId ? 'Edit Entry' : 'New Entry'}</h3>
+                <select value={newItem.category} onChange={e => setNewItem({ ...newItem, category: e.target.value })} style={st.select}>
+                  {allCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>)}
+                </select>
+                <input type="text" placeholder="Title" value={newItem.title} onChange={e => setNewItem({ ...newItem, title: e.target.value })} style={st.input} />
+                <textarea placeholder="Your thoughts, notes, or recommendations..." value={newItem.content} onChange={e => setNewItem({ ...newItem, content: e.target.value })} style={st.textarea} />
+                {voiceSupported && (
+                  <button type="button" className={`voice-btn ${isRecording ? 'recording' : ''}`} onClick={toggleVoice}>
+                    {isRecording ? <><div className="voice-dot" /> Recording... tap to stop</> : <>🎙️ Voice Entry</>}
+                  </button>
+                )}
+
+                {/* FIXED: Removed capture="environment" which caused issues on some mobile browsers */}
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} style={{ position: 'absolute', left: '-9999px', opacity: 0 }} />
+
+                {imagePreview ? (
+                  <div className="photo-upload-area has-image">
+                    <img src={imagePreview} className="photo-preview" alt="Preview" />
+                    <div className="photo-actions">
+                      <button onClick={() => fileInputRef.current?.click()} className="photo-btn" style={{ ...st.editButton, padding: '6px 12px' }}>📷 Change</button>
+                      <button onClick={removeImage} className="photo-btn" style={{ ...st.deleteButton, padding: '6px 12px' }}>✕ Remove</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="photo-upload-area" onClick={() => fileInputRef.current?.click()}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
+                    <div style={{ fontSize: 14, color: '#8B7355', fontWeight: 500 }}>Add a photo</div>
+                    <div style={{ fontSize: 12, color: '#A89B8C', marginTop: 2 }}>{isMobile ? 'Tap to take a photo or choose from library' : 'Click to choose a photo'}</div>
+                  </div>
+                )}
+                <div style={st.formActions}>
+                  <button className="btn-secondary" onClick={() => { setIsAdding(false); setEditingId(null); setNewItem({ category: 'notes', title: '', content: '' }); removeImage(); if (isRecording && recognitionRef.current) { recognitionRef.current.stop(); setIsRecording(false); } }} style={st.cancelButton}>Cancel</button>
+                  <button className="btn-primary" onClick={editingId ? handleSaveEdit : handleAdd} style={st.saveButton} disabled={uploading}>{editingId ? 'Save Changes' : 'Add Entry'}</button>
+                </div>
+              </div>
+            )}
+
+            <div style={st.grid}>
+              {filteredItems.map((item, i) => {
+                const ci = getCategoryInfo(item.category);
+                return (
+                  <article key={item.id} className="card" style={{ ...st.card, animationDelay: `${i*0.05}s`, borderLeft: `3px solid ${ci.color}` }}>
+                    <div style={st.cardHeader}>
+                      <span style={{ ...st.categoryBadge, color: ci.color }}>{ci.icon} {ci.label}</span>
+                      <div style={st.cardHeaderActions}>
+                        <button className="star-btn" onClick={() => toggleStar(item.id)} style={{ ...st.starButton, color: item.starred ? '#B8860B' : '#D4C4B0' }}>{item.starred ? '★' : '☆'}</button>
+                        <div style={st.shareContainer} onClick={e => e.stopPropagation()}>
+                          <button className="share-btn" onClick={() => setShareModalId(shareModalId === item.id ? null : item.id)} style={st.shareButton}>↗</button>
+                          {shareModalId === item.id && (
+                            <div style={st.shareModal}>
+                              <div style={st.shareModalHeader}>Share this entry</div>
+                              {navigator.share && <button onClick={() => handleNativeShare(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>📤</span>Share...</button>}
+                              {navigator.share && <div style={st.shareDivider} />}
+                              <button onClick={() => handleShareToContact(item, 'sms')} style={st.shareOption} className="share-option"><span style={st.shareIcon}>💬</span>Text Message</button>
+                              <button onClick={() => handleShareToContact(item, 'email')} style={st.shareOption} className="share-option"><span style={st.shareIcon}>✉️</span>Email</button>
+                              <button onClick={() => handleShareWhatsApp(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>📱</span>WhatsApp</button>
+                              <div style={st.shareDivider} />
+                              <button onClick={() => handleCopyText(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>📋</span>{copyFeedback === item.id ? '✓ Copied!' : 'Copy text'}</button>
+                              <button onClick={() => handleShareTwitter(item)} style={st.shareOption} className="share-option"><span style={st.shareIcon}>𝕏</span>Post on X</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {item.image_url && <img src={item.image_url} className="card-image" alt="" onClick={() => setLightboxUrl(item.image_url)} />}
+                    <h3 style={st.cardTitle}>{item.title}</h3>
+                    <p style={st.cardContent}>{item.content}</p>
+                    <div style={st.cardFooter}>
+                      <span style={st.date}>{item.date}</span>
+                      <div style={st.cardActions}>
+                        <button className="edit-btn" onClick={() => handleEdit(item)} style={st.editButton}>Edit</button>
+                        <button className="delete-btn" onClick={() => handleDelete(item.id)} style={st.deleteButton}>Delete</button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {filteredItems.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                <div style={{ fontSize: 40, color: '#D4C4B0', marginBottom: 12 }}>◇</div>
+                <p style={{ fontSize: 16, color: '#6B5A48', margin: '0 0 6px', fontFamily: '"Playfair Display", serif' }}>{searchQuery ? 'No matches found' : 'No entries yet'}</p>
+                <p style={{ fontSize: 13, color: '#A89B8C', margin: 0 }}>{searchQuery ? 'Try different keywords' : 'Tap the button above to add one'}</p>
+              </div>
+            )}
+          </main>
+
+          <footer style={st.footer}><p>✦ {items.length} entries ✦</p><p style={{ marginTop: 8, fontSize: 11, color: '#C4B8A8' }}>Created by BDF. All rights reserved.</p></footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<NotesApp />);
+  </script>
+</body>
+</html>
   <meta name="theme-color" content="#8B7355">
   <title>Commonplace — Notes & Recommendations</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>">
