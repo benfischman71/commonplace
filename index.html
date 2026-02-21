@@ -811,6 +811,7 @@
               </button>
             </div>
             <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
+            <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: 'Check out Commonplace — a personal journal for notes, photos & ideas.', url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 12, background: 'none', border: 'none', color: '#8B7355', fontSize: 13, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline' }}>Share Commonplace ↗</button>
           </div>
         );
       }
@@ -825,6 +826,7 @@
               <p className="landing-subtitle">A space for thoughts & discoveries</p>
               <button className="landing-enter-btn" onClick={handleEnterApp}>Open Journal</button>
               <p className="landing-tagline">Notes · Photos · Ideas</p>
+              <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: 'Check out Commonplace — a personal journal for notes, photos & ideas.', url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 24, background: 'none', border: 'none', color: '#8B7355', fontSize: 14, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline', animation: 'landingFadeIn 0.7s ease both', animationDelay: '1.3s' }}>Share Commonplace ↗</button>
               <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
             </div>
           </div>
