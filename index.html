@@ -141,8 +141,17 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    // Auto-connect config — no manual setup needed on new devices
+    const DEFAULT_SUPABASE_URL = 'https://ghlmptrfkrwyzduaqkqv.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobG1wdHJma3J3eXpkdWFxa3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNjk1OTUsImV4cCI6MjA4NTY0NTU5NX0.IU8GRBFRQgWHWE6zc0g8DIdIxpl1B8WUyyHvrJ6uNLc';
+
     const supabaseAPI = {
-      getConfig() { return JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null'); },
+      getConfig() {
+        const saved = JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null');
+        if (saved) return saved;
+        // Auto-use hardcoded config
+        return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY };
+      },
       headers(apiKey) { return { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' }; },
       async fetchEntries() {
         const c = this.getConfig(); if (!c) return null;
@@ -356,8 +365,14 @@
       };
 
       useEffect(() => {
+        // Auto-connect: save default config if none exists, then mark as configured
         const config = JSON.parse(localStorage.getItem('commonplace_supabase_config') || 'null');
-        if (config?.url && config?.key) { setSupabaseUrl(config.url); setSupabaseKey(config.key); setIsConfigured(true); }
+        if (!config?.url || !config?.key) {
+          localStorage.setItem('commonplace_supabase_config', JSON.stringify({ url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY }));
+        }
+        setSupabaseUrl(DEFAULT_SUPABASE_URL);
+        setSupabaseKey(DEFAULT_SUPABASE_KEY);
+        setIsConfigured(true);
       }, []);
       useEffect(() => { if (isConfigured) fetchFromCloud(); }, [isConfigured]);
 
@@ -725,30 +740,17 @@
             <div style={st.modalOverlay} onClick={() => setShowSettings(false)}>
               <div style={st.modalContent} onClick={e => e.stopPropagation()}>
                 <h2 style={st.modalTitle}>⚙️ Settings</h2>
-                <p style={st.modalSubtitle}>Connect to Supabase to sync everything across devices.</p>
-                {isConfigured ? (
-                  <div>
+                <p style={st.modalSubtitle}>Your notes sync automatically across all devices.</p>
+                <div>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: syncStatus === 'synced' ? 'rgba(107,142,107,0.15)' : syncStatus === 'error' ? 'rgba(205,92,92,0.15)' : 'rgba(184,134,11,0.15)', color: syncStatus === 'synced' ? '#6B8E6B' : syncStatus === 'error' ? '#CD5C5C' : '#B8860B', marginBottom: 20 }}>
-                      {syncStatus === 'synced' ? '✓ Connected & Synced' : syncStatus === 'error' ? '⚠ Error' : '↻ Syncing...'}
+                      {syncStatus === 'synced' ? '✓ Connected & Synced' : syncStatus === 'error' ? '⚠ Sync Error — tap Refresh' : '↻ Syncing...'}
                     </div>
-                    <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 20 }}>Your notes, photos, and categories are syncing.</p>
-                    <button onClick={fetchFromCloud} className="btn-secondary" style={{ ...st.cancelButton, marginRight: 12, marginBottom: 12 }}>↻ Refresh</button>
-                    <button onClick={disconnectSupabase} style={st.dangerButton}>Disconnect</button>
-                  </div>
-                ) : (
-                  <div>
-                    <label style={st.inputLabel}>Supabase Project URL</label>
-                    <input type="text" placeholder="https://xxxxx.supabase.co" value={supabaseUrl} onChange={e => setSupabaseUrl(e.target.value)} style={st.input} />
-                    <label style={st.inputLabel}>Supabase API Key</label>
-                    <input type="text" placeholder="eyJ..." value={supabaseKey} onChange={e => setSupabaseKey(e.target.value)} style={st.input} />
-                    <p style={st.helpText}>Use Legacy anon key from Settings → API Keys</p>
-                    {connectError && <div style={st.errorText}>⚠ {connectError}</div>}
-                    <div style={{ ...st.formActions, marginTop: 24 }}>
-                      <button onClick={() => { setShowSettings(false); setConnectError(''); }} className="btn-secondary" style={st.cancelButton}>Cancel</button>
-                      <button onClick={saveSupabaseConfig} className="btn-primary" style={st.saveButton}>Connect</button>
+                    <p style={{ fontSize: 14, color: '#5D5145', marginBottom: 20 }}>Notes, photos, and categories sync across all your devices automatically. No setup needed.</p>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button onClick={fetchFromCloud} className="btn-secondary" style={st.cancelButton}>↻ Refresh</button>
+                      <button onClick={() => setShowSettings(false)} className="btn-primary" style={st.saveButton}>Done</button>
                     </div>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           )}
