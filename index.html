@@ -777,6 +777,8 @@
 
       const syncDisp = syncStatus === 'synced' ? { text: '✓ Synced', cls: 'synced' } : syncStatus === 'syncing' ? { text: 'Syncing', cls: 'syncing', spin: true } : syncStatus === 'error' ? { text: '⚠ Error', cls: 'error' } : { text: 'Local only', cls: 'offline' };
 
+      const [showHome, setShowHome] = useState(true);
+
       const handleEnterApp = () => {
         setLandingExiting(true);
         setTimeout(() => { setShowLanding(false); setShowApp(true); }, 400);
@@ -829,6 +831,49 @@
               <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: 'Check out Commonplace — a personal journal for notes, photos & ideas.', url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 24, background: 'none', border: 'none', color: '#8B7355', fontSize: 14, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline', animation: 'landingFadeIn 0.7s ease both', animationDelay: '1.3s' }}>Share Commonplace ↗</button>
               <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
             </div>
+          </div>
+        );
+      }
+
+      if (showHome) {
+        return (
+          <div className="app-wrapper entering" style={{ minHeight: '100vh', background: 'linear-gradient(165deg, #FAF5EE 0%, #F0E8DC 40%, #E8DECE 70%, #F5EDE4 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', textAlign: 'center' }}>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div className="landing-logo" style={{ animationDelay: '0s', marginBottom: 16 }}>✦</div>
+              <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(28px, 6vw, 40px)', fontWeight: 600, color: '#2D2416', margin: '0 0 32px' }}>Commonplace</h1>
+              <button onClick={() => { setShowHome(false); setIsAdding(true); }} style={{ display: 'block', width: 280, margin: '0 auto 16px', padding: '18px 24px', background: '#8B7355', color: '#FDF8F3', border: 'none', borderRadius: 12, fontSize: 17, fontWeight: 500, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', boxShadow: '0 4px 20px rgba(139,115,85,0.3)', transition: 'all 0.2s' }}>
+                + Create New Entry
+              </button>
+              <button onClick={() => { setShowHome(false); }} style={{ display: 'block', width: 280, margin: '0 auto 16px', padding: '18px 24px', background: '#FFFBF7', color: '#5D5145', border: '1px solid rgba(139,115,85,0.25)', borderRadius: 12, fontSize: 17, fontWeight: 500, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', boxShadow: '0 2px 12px rgba(139,115,85,0.08)', transition: 'all 0.2s' }}>
+                View Existing Notes {items.length > 0 && <span style={{ fontSize: 14, color: '#A89B8C', marginLeft: 6 }}>({items.length})</span>}
+              </button>
+              <div style={{ marginTop: 32, display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'center' }}>
+                <button className="settings-btn" onClick={() => setShowSettings(true)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: 8, borderRadius: 8, color: '#8B7355', lineHeight: 1 }}>⚙️</button>
+                <div className={`sync-indicator ${syncDisp.cls}`}>{syncDisp.spin && <div className="spinner" />}{syncDisp.text}</div>
+              </div>
+              <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
+            </div>
+
+            {showSettings && (
+              <div style={st.modalOverlay} onClick={() => setShowSettings(false)}>
+                <div style={st.modalContent} onClick={e => e.stopPropagation()}>
+                  <h2 style={st.modalTitle}>⚙️ Settings</h2>
+                  <p style={st.modalSubtitle}>Signed in as <strong>{currentUser?.email}</strong></p>
+                  <div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: syncStatus === 'synced' ? 'rgba(107,142,107,0.15)' : syncStatus === 'error' ? 'rgba(205,92,92,0.15)' : 'rgba(184,134,11,0.15)', color: syncStatus === 'synced' ? '#6B8E6B' : syncStatus === 'error' ? '#CD5C5C' : '#B8860B', marginBottom: 20 }}>
+                      {syncStatus === 'synced' ? '✓ Connected & Synced' : syncStatus === 'error' ? '⚠ Sync Error' : '↻ Syncing...'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      <button onClick={fetchFromCloud} className="btn-secondary" style={st.cancelButton}>↻ Refresh</button>
+                      <button onClick={() => setShowSettings(false)} className="btn-primary" style={st.saveButton}>Done</button>
+                    </div>
+                    <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(139,115,85,0.1)' }}>
+                      <button onClick={() => { setShowSettings(false); handleLogout(); }} style={{ ...st.dangerButton, width: '100%' }}>Sign Out</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       }
@@ -924,7 +969,7 @@
             <div style={st.headerContent}>
               <div style={st.headerTop}>
                 <div style={st.logoSection}>
-                  <div style={st.logoMark} onClick={() => { setShowApp(false); setShowLanding(true); setLandingExiting(false); }} title="Home" role="button">✦</div>
+                  <div style={st.logoMark} onClick={() => { setShowHome(true); setIsAdding(false); setEditingId(null); }} title="Home" role="button">✦</div>
                   <div><h1 style={st.title}>Commonplace</h1><p style={st.subtitle}>Thoughts & discoveries</p></div>
                 </div>
                 <div style={st.headerRight}>
