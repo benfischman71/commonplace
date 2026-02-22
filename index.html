@@ -516,16 +516,44 @@
         setSyncStatus('syncing');
         try {
           const [entries, cats] = await Promise.all([supabaseAPI.fetchEntries(), supabaseAPI.fetchCategories()]);
-          if (entries && entries.length > 0) {
-            const formatted = entries.map(item => ({ id: item.id, category: item.category, title: item.title, content: item.content, date: item.date, starred: item.starred, image_url: item.image_url || null }));
-            setItems(formatted); saveLocal(formatted);
+          if (entries) {
+            if (entries.length > 0) {
+              const formatted = entries.map(item => ({ id: item.id, category: item.category, title: item.title, content: item.content, date: item.date, starred: item.starred, image_url: item.image_url || null }));
+              setItems(formatted); saveLocal(formatted);
+            }
           }
-          if (cats && cats.length > 0) {
-            const formatted = cats.map(c => ({ id: c.id, label: c.label, icon: c.icon, color: c.color }));
-            setCustomCategories(formatted); saveLocalCats(formatted);
+          if (cats) {
+            if (cats.length > 0) {
+              const formatted = cats.map(c => ({ id: c.id, label: c.label, icon: c.icon, color: c.color }));
+              setCustomCategories(formatted); saveLocalCats(formatted);
+            }
           }
           setSyncStatus('synced');
-        } catch (e) { console.error('Fetch error:', e); setSyncStatus('error'); }
+        } catch (e) {
+          console.error('Fetch error:', e);
+          // Try refreshing the token and retry once
+          try {
+            const refreshed = await supabaseAPI.refreshSession();
+            if (refreshed?.access_token) {
+              const [entries, cats] = await Promise.all([supabaseAPI.fetchEntries(), supabaseAPI.fetchCategories()]);
+              if (entries) {
+                if (entries.length > 0) {
+                  const formatted = entries.map(item => ({ id: item.id, category: item.category, title: item.title, content: item.content, date: item.date, starred: item.starred, image_url: item.image_url || null }));
+                  setItems(formatted); saveLocal(formatted);
+                }
+              }
+              if (cats) {
+                if (cats.length > 0) {
+                  const formatted = cats.map(c => ({ id: c.id, label: c.label, icon: c.icon, color: c.color }));
+                  setCustomCategories(formatted); saveLocalCats(formatted);
+                }
+              }
+              setSyncStatus('synced');
+            } else {
+              setSyncStatus('error');
+            }
+          } catch (e2) { console.error('Refresh retry error:', e2); setSyncStatus('error'); }
+        }
       };
 
       const handleImageSelect = async (e) => {
@@ -869,7 +897,7 @@
               </button>
             </div>
             <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
-            <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: "You\u2019ve been invited to use Commonplace — one easy place to store all your recommendations, notes, and things worth remembering. No more scattered texts and forgotten tips!", url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 12, background: 'none', border: 'none', color: '#8B7355', fontSize: 13, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline' }}>Share Commonplace ↗</button>
+            <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: "You have been invited to use Commonplace — one easy place to store all your recommendations, notes, and things worth remembering. No more scattered texts and forgotten tips!", url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 12, background: 'none', border: 'none', color: '#8B7355', fontSize: 13, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline' }}>Share Commonplace ↗</button>
           </div>
         );
       }
@@ -884,7 +912,7 @@
               <p className="landing-subtitle">A space for thoughts & discoveries</p>
               <button className="landing-enter-btn" onClick={handleEnterApp}>Open Journal</button>
               <p className="landing-tagline">Notes · Photos · Ideas</p>
-              <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: "You\u2019ve been invited to use Commonplace — one easy place to store all your recommendations, notes, and things worth remembering. No more scattered texts and forgotten tips!", url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 24, background: 'none', border: 'none', color: '#8B7355', fontSize: 14, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline', animation: 'landingFadeIn 0.7s ease both', animationDelay: '1.3s' }}>Share Commonplace ↗</button>
+              <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: "You have been invited to use Commonplace — one easy place to store all your recommendations, notes, and things worth remembering. No more scattered texts and forgotten tips!", url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 24, background: 'none', border: 'none', color: '#8B7355', fontSize: 14, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline', animation: 'landingFadeIn 0.7s ease both', animationDelay: '1.3s' }}>Share Commonplace ↗</button>
               <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
             </div>
           </div>
@@ -907,7 +935,7 @@
                 <button className="settings-btn" onClick={() => setShowSettings(true)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: 8, borderRadius: 8, color: '#8B7355', lineHeight: 1 }}>⚙️</button>
                 <div className={`sync-indicator ${syncDisp.cls}`}>{syncDisp.spin && <div className="spinner" />}{syncDisp.text}</div>
               </div>
-              <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: "You've been invited to use Commonplace — one easy place to store all your recommendations, notes, and things worth remembering. No more scattered texts and forgotten tips!", url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 16, background: 'none', border: 'none', color: '#8B7355', fontSize: 14, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline' }}>Share Commonplace ↗</button>
+              <button onClick={() => { if (navigator.share) { navigator.share({ title: 'Commonplace', text: "You have been invited to use Commonplace — one easy place to store all your recommendations, notes, and things worth remembering. No more scattered texts and forgotten tips!", url: 'https://benfischman71.github.io/commonplace' }).catch(() => {}); } else { navigator.clipboard.writeText('https://benfischman71.github.io/commonplace').then(() => { alert('Link copied to clipboard!'); }).catch(() => {}); } }} style={{ marginTop: 16, background: 'none', border: 'none', color: '#8B7355', fontSize: 14, cursor: 'pointer', fontFamily: '"Source Sans 3", sans-serif', letterSpacing: '0.5px', textDecoration: 'underline' }}>Share Commonplace ↗</button>
               <p style={{ marginTop: 40, fontSize: 11, color: '#C4B8A8', letterSpacing: '0.5px' }}>Created by BDF. All rights reserved.</p>
             </div>
 
